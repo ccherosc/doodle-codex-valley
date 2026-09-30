@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doodle Codex Valley</title>
+<style>
+:root {
+  --bg: #efe8d8; --panel: #fbf7ee; --ink: #2e2a24; --muted: #6d655a;
+  --line: #d9cfbb; --accent: #b4532a; --chip: #f1e9d8; --shadow: 0 6px 24px rgba(40,30,10,.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1d1b18; --panel: #282520; --ink: #eee6d6; --muted: #a79d8c;
+    --line: #3d3830; --accent: #e08457; --chip: #332f28; --shadow: 0 6px 24px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1d1b18; --panel: #282520; --ink: #eee6d6; --muted: #a79d8c;
+  --line: #3d3830; --accent: #e08457; --chip: #332f28; --shadow: 0 6px 24px rgba(0,0,0,.5);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--ink);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+#stage { position: fixed; inset: 0; touch-action: none; cursor: grab; }
+#stage.drag { cursor: grabbing; }
+canvas { display: block; width: 100%; height: 100%; }
+.bar { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px;
+  align-items: center; pointer-events: none; flex-wrap: wrap; }
+.bar > * { pointer-events: auto; }
+.title { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 7px 12px; box-shadow: var(--shadow); font-weight: 650; white-space: nowrap; }
+.title small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.group { display: flex; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+.group button { border: 0; background: none; color: var(--ink); font: inherit;
+  padding: 7px 11px; cursor: pointer; border-right: 1px solid var(--line); min-width: 38px; }
+.group button:last-child { border-right: 0; }
+.group button:hover { background: var(--chip); }
+.group button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.zoomlbl { padding: 7px 10px; color: var(--muted); font-variant-numeric: tabular-nums;
+  min-width: 58px; text-align: center; border-right: 1px solid var(--line); }
+.spacer { flex: 1; }
+#legend { position: fixed; top: 64px; right: 12px; bottom: 12px; width: 300px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow); overflow: auto; padding: 4px 12px 12px; transition: transform .2s; }
+#legend.hidden { transform: translateX(calc(100% + 24px)); }
+#legend h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 14px 0 6px; display: flex; justify-content: space-between; }
+#legend .item { display: flex; gap: 10px; align-items: center; padding: 5px 6px; border-radius: 8px;
+  cursor: pointer; }
+#legend .item:hover, #legend .item.on { background: var(--chip); }
+#legend .thumb { width: 36px; height: 36px; flex: none; image-rendering: pixelated;
+  border-radius: 6px; background: var(--chip); }
+#legend .name { font-weight: 600; }
+#legend .note { color: var(--muted); font-size: 12.5px; }
+#legend p { color: var(--muted); font-size: 12.5px; margin: 6px 0; }
+#tip { position: fixed; pointer-events: none; background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-size: 12.5px;
+  box-shadow: var(--shadow); display: none; max-width: 240px; }
+#tip b { display: block; }
+.hint { position: fixed; left: 12px; bottom: 12px; background: var(--panel); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 12px;
+  box-shadow: var(--shadow); }
+@media (max-width: 720px) {
+  .bar { top: 8px; left: 8px; right: 8px; gap: 6px; }
+  .title small { display: none; }
+  #legend { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 45vh; }
+  #legend.hidden { transform: translateY(calc(100% + 16px)); }
+  .hint { display: none; }
+  .group button { padding: 7px 9px; min-width: 34px; }
+}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv"></canvas></div>
+
+<div class="bar">
+  <div class="title">Doodle Codex Valley<small id="sub"></small></div>
+  <div class="group" role="group" aria-label="Zoom">
+    <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+    <div class="zoomlbl" id="zlbl">100%</div>
+    <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+  </div>
+  <div class="group" role="group" aria-label="Views">
+    <button id="fit" title="Whole map">Fit</button>
+    <button id="z1" title="Full size: one tile is 64 px">1:1</button>
+    <button id="z3" title="Close-up">3×</button>
+  </div>
+  <div class="group" role="group" aria-label="Options">
+    <button id="play" aria-pressed="false" title="Pause / play">Pause</button>
+    <button id="grid" aria-pressed="false" title="Show the dual display grid">Grid</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="group"><button id="leg" aria-pressed="true">Legend</button></div>
+</div>
+
+<aside id="legend"></aside>
+<div id="tip"></div>
+<div class="hint">Drag to pan · wheel or pinch to zoom · click anything in the legend to fly to it</div>
+
+<script>
+const W = {
+ "tile": 64,
+ "frames": 6,
+ "fps": 10,
+ "w": 36,
+ "h": 24,
+ "terrain": [
+  "terrain/frame_0.webp",
+  "terrain/frame_1.webp",
+  "terrain/frame_2.webp",
+  "terrain/frame_3.webp",
+  "terrain/frame_4.webp",
+  "terrain/frame_5.webp"
+ ],
+ "grid": [
+  "MMMMMMMMMMMMMMMMMMMMMRMMMMWWMMMMMMMM",
+  "MMMMMMMMMMMMMMMMMMMMMRMMMWWMMMMMMMMM",
+  "MMMMMDDDDDGMMGGMMMGGMRGGWWMMMMMMMMMM",
+  "MMGGGDDDDDGGGGGGGGGGGRGGWWGMMMMMMMMM",
+  "FFFFGDDDDDGGGGGGGGGGGRGGGWWGGMMMMMMM",
+  "FFFFFGGGDGGGGGGGGGGGGRGGGWWGGGGMMMGG",
+  "FFFFFFGGDGGGGGGGGGGGGRGGGGWWGGGGGFFF",
+  "FFFFFFFGDGGGGGGGGGGGGRGGGGGWWGGFFFFF",
+  "FFFFFFFGGDGGGGGGRRGGGRGGGGGWWFFFFFFF",
+  "FFFFFFFFGDGGGGGGRRGGGRGGGGGGWWFFFFFF",
+  "FFFFFFFFGDGGGGGGRRGGGRGGGGGGWWFFFFFF",
+  "FFFFFFFGGDGGGGGGRRGGGRGGGGGGGWWGFFFF",
+  "FFFFFFGGGDGGGGGGRRGGGRGGGGGGGWWGGFFF",
+  "FFFRRRRRRRRRRRRRRRRRRRRRRRRRRRWWGGGG",
+  "FFFFFGGGGGGGGGGGGRGGGGGGDDDDDDDWWWWW",
+  "FFFFFFGGGGGGGFFFGRGGGGGGDDDDDDWWWWWW",
+  "FFFFFGGGGGGGGFFGGRGGGGGGDDDDDDWWWWWW",
+  "FFFFGGGGGDDDDDGGGRGGWWGGGGGDDWWWWWWW",
+  "FFFFGGGGGDDDDDGGGRGWWWGGGGGDDWWWWWWW",
+  "FFFGGGGGGDDDDDGGGRGGGWGGGGGDDWWWWWWW",
+  "FFFGGGGGGRRRRRRRRRGGGGDDDDGGDDWWWWWW",
+  "FFFFGGGGGGGGGGGGGGGGGGDDDDGGDDWWWWWW",
+  "FFFFFGGGGGGGGGGGGGGGGGDDDDGGGDDWWWWW",
+  "FFFFFFGGGGGGGGGGGGGGGGGGGGGGGGDDWWWW"
+ ],
+ "structures": [
+  {
+   "name": "castle",
+   "x": 16,
+   "y": 6,
+   "note": "Castle keep",
+   "file": "sprites/structures/castle.png",
+   "w": 128,
+   "h": 128,
+   "fw": 2,
+   "fh": 2
+  },
+  {
+   "name": "tower",
+   "x": 24,
+   "y": 5,
+   "note": "Watchtower over the river",
+   "file": "sprites/structures/tower.png",
+   "w": 64,
+   "h": 128,
+   "fw": 1,
+   "fh": 2
+  },
+  {
+   "name": "dungeon",
+   "x": 7,
+   "y": 2,
+   "note": "Barrow at the foot of the crags",
+   "file": "sprites/structures/dungeon.png",
+   "w": 64,
+   "h": 64,
+   "fw": 1,
+   "fh": 1
+  },
+  {
+   "name": "town_hamlet",
+   "x": 6,
+   "y": 12,
+   "note": "Woodcutters' hamlet at the forest trail",
+   "file": "sprites/structures/town_hamlet.png",
+   "w": 64,
+   "h": 64,
+   "fw": 1,
+   "fh": 1
+  },
+  {
+   "name": "town_crossroads",
+   "x": 22,
+   "y": 12,
+   "note": "Crossroads inn where the pass road meets the east road",
+   "file": "sprites/structures/town_crossroads.png",
+   "w": 128,
+   "h": 64,
+   "fw": 2,
+   "fh": 1
+  },
+  {
+   "name": "town_market",
+   "x": 26,
+   "y": 14,
+   "note": "Lakeside market",
+   "file": "sprites/structures/town_market.png",
+   "w": 128,
+   "h": 64,
+   "fw": 2,
+   "fh": 1
+  },
+  {
+   "name": "town_village",
+   "x": 10,
+   "y": 18,
+   "note": "Farming village",
+   "file": "sprites/structures/town_village.png",
+   "w": 128,
+   "h": 128,
+   "fw": 2,
+   "fh": 2
+  }
+ ],
+ "monsters": [
+  {
+   "creature": "dragon",
+   "seq": [
+    [
+     "fire_breath",
+     2
+    ],
+    [
+     "idle",
+     2
+    ],
+    [
+     "attack",
+     1
+    ],
+    [
+     "fly",
+     4
+    ]
+   ],
+   "facing": "left",
+   "x": 31,
+   "y": 3,
+   "box": [
+    128,
+    128
+   ],
+   "patrol": null,
+   "note": "Dragon on its crag",
+   "tier": 5,
+   "rank": "boss"
+  },
+  {
+   "creature": "ogre",
+   "seq": [
+    [
+     "idle",
+     3
+    ],
+    [
+     "attack",
+     1
+    ]
+   ],
+   "facing": "right",
+   "x": 5,
+   "y": 2,
+   "box": [
+    64,
+    128
+   ],
+   "patrol": null,
+   "note": "Ogre guarding the barrow",
+   "tier": 4,
+   "rank": "miniboss"
+  },
+  {
+   "creature": "skeleton",
+   "seq": [
+    [
+     "cast",
+     2
+    ],
+    [
+     "idle",
+     2
+    ]
+   ],
+   "facing": "down",
+   "x": 8,
+   "y": 3,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": null,
+   "note": "Skeleton at the barrow door",
+   "tier": 2,
+   "rank": "normal"
+  },
+  {
+   "creature": "bat",
+   "seq": [
+    [
+     "fly",
+     1
+    ]
+   ],
+   "facing": "right",
+   "x": 10,
+   "y": 5,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": [
+    [
+     10,
+     5
+    ],
+    [
+     13,
+     5
+    ],
+    [
+     13,
+     7
+    ],
+    [
+     10,
+     7
+    ]
+   ],
+   "note": "Bat circling the barrow",
+   "tier": 1,
+   "rank": "normal"
+  },
+  {
+   "creature": "wraith",
+   "seq": [
+    [
+     "cast",
+     2
+    ],
+    [
+     "idle",
+     2
+    ],
+    [
+     "walk",
+     2
+    ]
+   ],
+   "facing": "right",
+   "x": 3,
+   "y": 9,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": null,
+   "note": "Wraith in the deep wood",
+   "tier": 3,
+   "rank": "normal"
+  },
+  {
+   "creature": "spider",
+   "seq": [
+    [
+     "web",
+     2
+    ],
+    [
+     "idle",
+     3
+    ],
+    [
+     "attack",
+     1
+    ]
+   ],
+   "facing": "down",
+   "x": 4,
+   "y": 6,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": null,
+   "note": "Spider in the forest",
+   "tier": 3,
+   "rank": "normal"
+  },
+  {
+   "creature": "wolf",
+   "seq": [
+    [
+     "walk",
+     1
+    ]
+   ],
+   "facing": "right",
+   "x": 10,
+   "y": 8,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": [
+    [
+     10,
+     8
+    ],
+    [
+     10,
+     11
+    ],
+    [
+     13,
+     11
+    ],
+    [
+     13,
+     8
+    ]
+   ],
+   "note": "Wolf prowling the trail",
+   "tier": 2,
+   "rank": "normal"
+  },
+  {
+   "creature": "goblin",
+   "seq": [
+    [
+     "attack",
+     3
+    ],
+    [
+     "hurt",
+     1
+    ],
+    [
+     "attack",
+     2
+    ],
+    [
+     "hurt",
+     1
+    ],
+    [
+     "die",
+     1
+    ],
+    [
+     "poof",
+     1
+    ],
+    [
+     "gone",
+     12
+    ],
+    [
+     "idle",
+     3
+    ]
+   ],
+   "facing": "right",
+   "x": 12,
+   "y": 13,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": null,
+   "note": "Goblin ambush on the west road",
+   "tier": 2,
+   "rank": "normal"
+  },
+  {
+   "creature": "orc",
+   "seq": [
+    [
+     "walk",
+     1
+    ]
+   ],
+   "facing": "right",
+   "x": 18,
+   "y": 13,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": [
+    [
+     18,
+     13
+    ],
+    [
+     21,
+     13
+    ],
+    [
+     21,
+     15
+    ],
+    [
+     18,
+     15
+    ]
+   ],
+   "note": "Orc marching the crossroads",
+   "tier": 3,
+   "rank": "normal"
+  },
+  {
+   "creature": "rat",
+   "seq": [
+    [
+     "walk",
+     1
+    ]
+   ],
+   "facing": "right",
+   "x": 24,
+   "y": 17,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": [
+    [
+     24,
+     17
+    ],
+    [
+     27,
+     17
+    ],
+    [
+     27,
+     19
+    ],
+    [
+     24,
+     19
+    ]
+   ],
+   "note": "Rat raiding the market",
+   "tier": 1,
+   "rank": "normal"
+  },
+  {
+   "creature": "slime",
+   "seq": [
+    [
+     "idle",
+     3
+    ],
+    [
+     "split",
+     1
+    ],
+    [
+     "attack",
+     1
+    ],
+    [
+     "idle",
+     2
+    ]
+   ],
+   "facing": "left",
+   "x": 22,
+   "y": 17,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": null,
+   "note": "Slime by the pond",
+   "tier": 1,
+   "rank": "normal"
+  },
+  {
+   "creature": "slime",
+   "seq": [
+    [
+     "walk",
+     1
+    ]
+   ],
+   "facing": "left",
+   "x": 28,
+   "y": 21,
+   "box": [
+    64,
+    64
+   ],
+   "patrol": [
+    [
+     28,
+     21
+    ],
+    [
+     29,
+     23
+    ],
+    [
+     26,
+     23
+    ],
+    [
+     26,
+     21
+    ]
+   ],
+   "note": "Slime oozing along the beach",
+   "tier": 1,
+   "rank": "normal"
+  }
+ ],
+ "people": [
+  {
+   "body": "hero",
+   "build": "plate",
+   "facing": "left",
+   "x": 13,
+   "y": 13,
+   "note": "Hero in plate, fighting the goblin",
+   "file": "people/hero_plate_left.png",
+   "kind": "hero"
+  },
+  {
+   "body": "hero2",
+   "build": "ranger",
+   "facing": "right",
+   "x": 8,
+   "y": 10,
+   "note": "Ranger tracking the wolf",
+   "file": "people/hero2_ranger_right.png",
+   "kind": "hero"
+  },
+  {
+   "body": "hero",
+   "build": "dragon",
+   "facing": "right",
+   "x": 28,
+   "y": 5,
+   "note": "Hero in dragon armour facing the dragon",
+   "file": "people/hero_dragon_right.png",
+   "kind": "hero"
+  },
+  {
+   "body": "hero2",
+   "build": "light",
+   "facing": "right",
+   "x": 29,
+   "y": 6,
+   "note": "Paladin backing up the dragon hunt",
+   "file": "people/hero2_light_right.png",
+   "kind": "hero"
+  },
+  {
+   "body": "hero",
+   "build": "dark",
+   "facing": "left",
+   "x": 6,
+   "y": 4,
+   "note": "Dark knight at the barrow",
+   "file": "people/hero_dark_left.png",
+   "kind": "hero"
+  },
+  {
+   "body": "hero2",
+   "build": "battlemage",
+   "facing": "down",
+   "x": 15,
+   "y": 10,
+   "note": "Battlemage on the castle road",
+   "file": "people/hero2_battlemage_down.png",
+   "kind": "hero"
+  },
+  {
+   "body": "m_burly",
+   "build": "guard",
+   "facing": "down",
+   "x": 15,
+   "y": 8,
+   "note": "Castle guard",
+   "file": "people/m_burly_guard_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_athletic",
+   "build": "watchman",
+   "facing": "down",
+   "x": 18,
+   "y": 8,
+   "note": "Castle watch",
+   "file": "people/f_athletic_watchman_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_slender",
+   "build": "queen",
+   "facing": "down",
+   "x": 16,
+   "y": 9,
+   "note": "The queen at the gate",
+   "file": "people/f_slender_queen_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_elder",
+   "build": "noble",
+   "facing": "right",
+   "x": 14,
+   "y": 9,
+   "note": "An old noble",
+   "file": "people/m_elder_noble_right.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_stocky",
+   "build": "watchman",
+   "facing": "left",
+   "x": 25,
+   "y": 7,
+   "note": "Tower watchman",
+   "file": "people/m_stocky_watchman_left.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_portly",
+   "build": "innkeeper",
+   "facing": "down",
+   "x": 24,
+   "y": 12,
+   "note": "Innkeeper",
+   "file": "people/m_portly_innkeeper_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_curvy",
+   "build": "barmaid",
+   "facing": "up",
+   "x": 22,
+   "y": 14,
+   "note": "Barmaid",
+   "file": "people/f_curvy_barmaid_up.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_lanky",
+   "build": "bard",
+   "facing": "down",
+   "x": 20,
+   "y": 14,
+   "note": "Bard at the crossroads",
+   "file": "people/m_lanky_bard_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_stocky",
+   "build": "merchant",
+   "facing": "down",
+   "x": 26,
+   "y": 15,
+   "note": "Merchant",
+   "file": "people/m_stocky_merchant_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_stout",
+   "build": "farmer",
+   "facing": "right",
+   "x": 28,
+   "y": 15,
+   "note": "Farmer selling at market",
+   "file": "people/f_stout_farmer_right.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_lanky",
+   "build": "villager",
+   "facing": "up",
+   "x": 27,
+   "y": 16,
+   "note": "Villager browsing",
+   "file": "people/m_lanky_villager_up.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_elder",
+   "build": "sage",
+   "facing": "right",
+   "x": 9,
+   "y": 19,
+   "note": "Village sage",
+   "file": "people/f_elder_sage_right.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_elder",
+   "build": "farmer",
+   "facing": "down",
+   "x": 23,
+   "y": 21,
+   "note": "Old farmer in his field",
+   "file": "people/m_elder_farmer_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_burly",
+   "build": "smith",
+   "facing": "left",
+   "x": 13,
+   "y": 18,
+   "note": "Blacksmith",
+   "file": "people/m_burly_smith_left.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_slender",
+   "build": "villager",
+   "facing": "down",
+   "x": 12,
+   "y": 19,
+   "note": "Villager",
+   "file": "people/f_slender_villager_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_athletic",
+   "build": "hunter",
+   "facing": "down",
+   "x": 7,
+   "y": 12,
+   "note": "Hunter at the hamlet",
+   "file": "people/f_athletic_hunter_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_portly",
+   "build": "priest",
+   "facing": "down",
+   "x": 15,
+   "y": 12,
+   "note": "Priest at the roadside",
+   "file": "people/m_portly_priest_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_lanky",
+   "build": "cultist",
+   "facing": "left",
+   "x": 9,
+   "y": 4,
+   "note": "Cultist at the barrow",
+   "file": "people/m_lanky_cultist_left.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_curvy",
+   "build": "wizard",
+   "facing": "down",
+   "x": 23,
+   "y": 5,
+   "note": "Wizard at the tower",
+   "file": "people/f_curvy_wizard_down.png",
+   "kind": "npc"
+  },
+  {
+   "body": "f_elder",
+   "build": "monk",
+   "facing": "up",
+   "x": 14,
+   "y": 21,
+   "note": "Monk on the south road",
+   "file": "people/f_elder_monk_up.png",
+   "kind": "npc"
+  },
+  {
+   "body": "m_stocky",
+   "build": "hunter",
+   "facing": "right",
+   "x": 28,
+   "y": 19,
+   "note": "Angler on the beach",
+   "file": "people/m_stocky_hunter_right.png",
+   "kind": "npc"
+  }
+ ],
+ "sprites": {
+  "dragon/fly/left": {
+   "file": "sprites/monsters/dragon/fly_left.png",
+   "w": 128,
+   "h": 128,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "dragon/fire_breath/left": {
+   "file": "sprites/monsters/dragon/fire_breath_left.png",
+   "w": 256,
+   "h": 128,
+   "ax": 128,
+   "ay": 0,
+   "loops": true
+  },
+  "dragon/idle/left": {
+   "file": "sprites/monsters/dragon/idle_left.png",
+   "w": 128,
+   "h": 128,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "dragon/attack/left": {
+   "file": "sprites/monsters/dragon/attack_left.png",
+   "w": 192,
+   "h": 128,
+   "ax": 64,
+   "ay": 0,
+   "loops": true
+  },
+  "ogre/attack/right": {
+   "file": "sprites/monsters/ogre/attack_right.png",
+   "w": 192,
+   "h": 128,
+   "ax": 64,
+   "ay": 0,
+   "loops": true
+  },
+  "ogre/idle/right": {
+   "file": "sprites/monsters/ogre/idle_right.png",
+   "w": 64,
+   "h": 128,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "skeleton/cast/down": {
+   "file": "sprites/monsters/skeleton/cast_down.png",
+   "w": 64,
+   "h": 128,
+   "ax": 0,
+   "ay": 64,
+   "loops": true
+  },
+  "skeleton/idle/down": {
+   "file": "sprites/monsters/skeleton/idle_down.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "bat/fly/down": {
+   "file": "sprites/monsters/bat/fly_down.png",
+   "w": 64,
+   "h": 128,
+   "ax": 0,
+   "ay": 64,
+   "loops": true
+  },
+  "bat/fly/left": {
+   "file": "sprites/monsters/bat/fly_left.png",
+   "w": 64,
+   "h": 128,
+   "ax": 0,
+   "ay": 64,
+   "loops": true
+  },
+  "bat/fly/right": {
+   "file": "sprites/monsters/bat/fly_right.png",
+   "w": 64,
+   "h": 128,
+   "ax": 0,
+   "ay": 64,
+   "loops": true
+  },
+  "bat/fly/up": {
+   "file": "sprites/monsters/bat/fly_up.png",
+   "w": 64,
+   "h": 128,
+   "ax": 0,
+   "ay": 64,
+   "loops": true
+  },
+  "wraith/cast/right": {
+   "file": "sprites/monsters/wraith/cast_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "wraith/walk/right": {
+   "file": "sprites/monsters/wraith/walk_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "wraith/idle/right": {
+   "file": "sprites/monsters/wraith/idle_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "spider/web/down": {
+   "file": "sprites/monsters/spider/web_down.png",
+   "w": 128,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "spider/attack/down": {
+   "file": "sprites/monsters/spider/attack_down.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "spider/idle/down": {
+   "file": "sprites/monsters/spider/idle_down.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "wolf/walk/down": {
+   "file": "sprites/monsters/wolf/walk_down.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "wolf/walk/left": {
+   "file": "sprites/monsters/wolf/walk_left.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "wolf/walk/right": {
+   "file": "sprites/monsters/wolf/walk_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "wolf/walk/up": {
+   "file": "sprites/monsters/wolf/walk_up.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "goblin/attack/right": {
+   "file": "sprites/monsters/goblin/attack_right.png",
+   "w": 128,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "goblin/idle/right": {
+   "file": "sprites/monsters/goblin/idle_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "goblin/die/right": {
+   "file": "sprites/monsters/goblin/die_right.png",
+   "w": 128,
+   "h": 64,
+   "ax": 64,
+   "ay": 0,
+   "loops": false
+  },
+  "goblin/poof/right": {
+   "file": "sprites/monsters/goblin/poof_right.png",
+   "w": 128,
+   "h": 64,
+   "ax": 64,
+   "ay": 0,
+   "loops": false
+  },
+  "goblin/hurt/right": {
+   "file": "sprites/monsters/goblin/hurt_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "orc/walk/down": {
+   "file": "sprites/monsters/orc/walk_down.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "orc/walk/left": {
+   "file": "sprites/monsters/orc/walk_left.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "orc/walk/right": {
+   "file": "sprites/monsters/orc/walk_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "orc/walk/up": {
+   "file": "sprites/monsters/orc/walk_up.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "rat/walk/down": {
+   "file": "sprites/monsters/rat/walk_down.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "rat/walk/left": {
+   "file": "sprites/monsters/rat/walk_left.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "rat/walk/right": {
+   "file": "sprites/monsters/rat/walk_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "rat/walk/up": {
+   "file": "sprites/monsters/rat/walk_up.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/attack/left": {
+   "file": "sprites/monsters/slime/attack_left.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/split/left": {
+   "file": "sprites/monsters/slime/split_left.png",
+   "w": 128,
+   "h": 64,
+   "ax": 64,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/idle/left": {
+   "file": "sprites/monsters/slime/idle_left.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/walk/down": {
+   "file": "sprites/monsters/slime/walk_down.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/walk/left": {
+   "file": "sprites/monsters/slime/walk_left.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/walk/right": {
+   "file": "sprites/monsters/slime/walk_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/walk/up": {
+   "file": "sprites/monsters/slime/walk_up.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  }
+ }
+};
+const T = W.tile, FR = W.frames, FPS = W.fps;
+const MW = W.w * T, MH = W.h * T;
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const stage = document.getElementById('stage');
+
+// ---------- images ----------
+const imgs = {};
+function img(src) {
+  if (!imgs[src]) { const i = new Image(); i.src = src; imgs[src] = i; }
+  return imgs[src];
+}
+const terrain = W.terrain.map(img);
+W.structures.forEach(s => img(s.file));
+W.people.forEach(p => img(p.file));
+Object.values(W.sprites).forEach(s => img(s.file));
+
+// ---------- entities ----------
+// Every entity has a ground line (for y-sorting) and a draw(frame) at time t.
+const ents = [];
+W.structures.forEach(s => ents.push({
+  kind: 'structure', label: pretty(s.name), note: s.note, ref: s,
+  cx: () => (s.x + s.fw / 2) * T, cy: () => (s.y + s.fh / 2) * T,
+  ground: () => (s.y + s.fh) * T,
+  bbox: () => [s.x * T, s.y * T, s.fw * T, s.fh * T],
+  draw(t) {
+    const f = frameAt(t), im = img(s.file);
+    ctx.drawImage(im, f * s.w, 0, s.w, s.h, s.x * T, (s.y + s.fh) * T - s.h, s.w, s.h);
+  }
+}));
+
+W.people.forEach((p, i) => ents.push({
+  kind: p.kind, label: pretty(p.body) + ' · ' + pretty(p.build), note: p.note, ref: p,
+  cx: () => (p.x + .5) * T, cy: () => (p.y + .5) * T, ground: () => (p.y + 1) * T,
+  bbox: () => [p.x * T, p.y * T, T, T],
+  draw(t) { ctx.drawImage(img(p.file), frameAt(t) * T, 0, T, T, p.x * T, p.y * T, T, T); }
+}));
+
+W.monsters.forEach((m, i) => {
+  const [bw, bh] = m.box;
+  // Patrol path: cumulative lengths so position is a function of time alone.
+  let path = null, total = 0;
+  if (m.patrol) {
+    const pts = m.patrol.concat([m.patrol[0]]);
+    path = []; for (let k = 0; k < pts.length - 1; k++) {
+      const a = pts[k], b = pts[k + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      path.push({ a, b, len, s: total }); total += len;
+    }
+  }
+  const speed = m.creature === 'bat' ? 1.6 : 1.1;           // tiles per second
+  const seqLen = m.seq.reduce((n, [, r]) => n + r * FR, 0);  // in frames
+  const offset = (i * 7 % 3) * FR;                           // desync, whole loops only
+  const e = {
+    kind: 'monster', label: pretty(m.creature), note: m.note, ref: m,
+    pos(t) {
+      if (!path) return [m.x, m.y, m.facing];
+      const d = (t * speed) % total;
+      const seg = path.find(q => d >= q.s && d < q.s + q.len) || path[path.length - 1];
+      const u = (d - seg.s) / seg.len, dx = seg.b[0] - seg.a[0], dy = seg.b[1] - seg.a[1];
+      const fc = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      return [seg.a[0] + dx * u, seg.a[1] + dy * u, fc];
+    },
+    state(t) {
+      let n = (Math.floor(t * FPS) + offset) % seqLen;
+      for (const [st, r] of m.seq) { if (n < r * FR) return [st, n % FR]; n -= r * FR; }
+      return [m.seq[0][0], 0];
+    },
+    cx() { const [x] = this.pos(now); return x * T + bw / 2; },
+    cy() { const [, y] = this.pos(now); return y * T + bh / 2; },
+    ground() { const [, y] = this.pos(now); return y * T + bh; },
+    bbox() { const [x, y] = this.pos(now); return [x * T, y * T, bw, bh]; },
+    draw(t) {
+      const [x, y, fc] = this.pos(t), [st, f] = this.state(t);
+      if (st === 'gone') return;
+      const sp = W.sprites[m.creature + '/' + st + '/' + fc];
+      if (!sp) return;
+      ctx.drawImage(img(sp.file), f * sp.w, 0, sp.w, sp.h,
+        Math.round(x * T) - sp.ax, Math.round(y * T) - sp.ay, sp.w, sp.h);
+    },
+    status(t) { const [st] = this.state(t); return st === 'gone' ? 'respawning…' : st.replace('_', ' '); }
+  };
+  ents.push(e);
+});
+
+function frameAt(t) { return Math.floor(t * FPS) % FR; }
+function pretty(s) { return s.replace(/^town_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
+
+// ---------- view ----------
+let dpr = 1, vw = 0, vh = 0, scale = 1, ox = 0, oy = 0;   // screen = world*scale + o
+const MINS = 0.08, MAXS = 8;
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  vw = stage.clientWidth; vh = stage.clientHeight;
+  cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr);
+}
+// The part of the screen the toolbar and legend leave free.
+function pane() {
+  const legOpen = !document.getElementById('legend').classList.contains('hidden');
+  if (innerWidth <= 720) return { x: 0, y: 56, w: vw, h: vh - 56 - (legOpen ? vh * .45 + 8 : 0) };
+  return { x: 0, y: 56, w: vw - (legOpen ? 324 : 0), h: vh - 56 };
+}
+function clampView() {
+  const m = 80, P = pane();
+  const w = MW * scale, h = MH * scale;
+  ox = w < P.w ? P.x + (P.w - w) / 2 : Math.min(P.x + m, Math.max(P.x + P.w - w - m, ox));
+  oy = h < P.h ? P.y + (P.h - h) / 2 : Math.min(P.y + m, Math.max(P.y + P.h - h - m, oy));
+}
+function zoomAt(ns, sx, sy) {
+  ns = Math.min(MAXS, Math.max(MINS, ns));
+  const wx = (sx - ox) / scale, wy = (sy - oy) / scale;
+  scale = ns; ox = sx - wx * scale; oy = sy - wy * scale; clampView(); label();
+}
+function fitScale() { const P = pane(); return Math.min((P.w - 24) / MW, (P.h - 16) / MH); }
+function center() { const P = pane(); return [P.x + P.w / 2, P.y + P.h / 2]; }
+function label() { document.getElementById('zlbl').textContent = Math.round(scale * 100) + '%'; }
+
+let fly = null;   // animated camera move
+function flyTo(wx, wy, ns) {
+  fly = { t0: performance.now(), s0: scale, s1: ns,
+          c0: [(center()[0] - ox) / scale, (center()[1] - oy) / scale], c1: [wx, wy] };
+}
+function stepFly(tn) {
+  if (!fly) return;
+  let u = Math.min(1, (tn - fly.t0) / 650); const e = u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+  scale = Math.exp(Math.log(fly.s0) + (Math.log(fly.s1) - Math.log(fly.s0)) * e);
+  const cx = fly.c0[0] + (fly.c1[0] - fly.c0[0]) * e, cy = fly.c0[1] + (fly.c1[1] - fly.c0[1]) * e;
+  const [px, py] = center(); ox = px - cx * scale; oy = py - cy * scale; clampView(); label();
+  if (u >= 1) fly = null;
+}
+
+// ---------- input ----------
+const ptrs = new Map(); let pinch0 = null, moved = false;
+stage.addEventListener('pointerdown', e => {
+  stage.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  fly = null; moved = false; stage.classList.add('drag');
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()];
+    pinch0 = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: scale }; }
+});
+stage.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) { hover(e.clientX, e.clientY); return; }
+  const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  if (ptrs.size === 2 && pinch0) {
+    const [a, b] = [...ptrs.values()];
+    zoomAt(pinch0.s * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+  } else if (ptrs.size === 1) {
+    ox += e.clientX - prev[0]; oy += e.clientY - prev[1]; clampView();
+  }
+  if (Math.abs(e.movementX) + Math.abs(e.movementY) > 2) moved = true;
+  tip.style.display = 'none';
+});
+function up(e) {
+  ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = null;
+  if (!ptrs.size) stage.classList.remove('drag');
+  if (!moved && e.type === 'pointerup') hover(e.clientX, e.clientY, true);
+}
+stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+stage.addEventListener('wheel', e => {
+  e.preventDefault(); fly = null;
+  zoomAt(scale * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX, e.clientY);
+}, { passive: false });
+const zc = center;
+document.getElementById('zin').onclick = () => { const [x, y] = zc(); flyTo((x - ox) / scale, (y - oy) / scale, Math.min(MAXS, scale * 2)); };
+document.getElementById('zout').onclick = () => { const [x, y] = zc(); flyTo((x - ox) / scale, (y - oy) / scale, Math.max(MINS, scale / 2)); };
+document.getElementById('fit').onclick = () => flyTo(MW / 2, MH / 2, fitScale());
+document.getElementById('z1').onclick = () => { const [x, y] = zc(); flyTo((x - ox) / scale, (y - oy) / scale, 1); };
+document.getElementById('z3').onclick = () => { const [x, y] = zc(); flyTo((x - ox) / scale, (y - oy) / scale, 3); };
+let paused = false, pauseAt = 0, tBase = 0;
+document.getElementById('play').onclick = function () {
+  paused = !paused; this.setAttribute('aria-pressed', paused); this.textContent = paused ? 'Play' : 'Pause';
+  if (paused) pauseAt = now; else tBase = performance.now() / 1000 - pauseAt;
+};
+let showGrid = false;
+document.getElementById('grid').onclick = function () { showGrid = !showGrid; this.setAttribute('aria-pressed', showGrid); };
+document.getElementById('leg').onclick = function () {
+  const h = document.getElementById('legend').classList.toggle('hidden'); this.setAttribute('aria-pressed', !h);
+  if (scale <= fitScale() * 1.3 || fly) flyTo(MW / 2, MH / 2, fitScale()); else clampView();
+};
+addEventListener('keydown', e => {
+  if (e.key === '+' || e.key === '=') document.getElementById('zin').click();
+  if (e.key === '-') document.getElementById('zout').click();
+  if (e.key === '0') document.getElementById('fit').click();
+  if (e.key === '1') document.getElementById('z1').click();
+  if (e.key === ' ') { e.preventDefault(); document.getElementById('play').click(); }
+});
+
+// ---------- hover / highlight ----------
+const tip = document.getElementById('tip');
+let focus = null, focusUntil = 0;
+function pick(sx, sy) {
+  const wx = (sx - ox) / scale, wy = (sy - oy) / scale;
+  let best = null;
+  for (const e of ents) { const [x, y, w, h] = e.bbox();
+    if (wx >= x && wx < x + w && wy >= y && wy < y + h && (!best || e.ground() > best.ground())) best = e; }
+  return best;
+}
+function hover(sx, sy, tap) {
+  const e = pick(sx, sy);
+  if (!e) { tip.style.display = 'none'; return; }
+  tip.innerHTML = '<b>' + e.label + '</b>' + e.note + (e.status ? ' · <i>' + e.status(now) + '</i>' : '');
+  tip.style.display = 'block';
+  tip.style.left = Math.min(vw - 250, sx + 14) + 'px'; tip.style.top = (sy + 14) + 'px';
+  if (tap) { focus = e; focusUntil = now + 2.5; }
+}
+
+// ---------- render ----------
+let now = 0;
+function draw(tn) {
+  if (!paused) now = tn / 1000 - tBase;
+  stepFly(tn);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = getComputedStyle(document.body).backgroundColor; ctx.fillRect(0, 0, cv.width, cv.height);
+  const s = scale * dpr;
+  ctx.setTransform(s, 0, 0, s, Math.round(ox * dpr), Math.round(oy * dpr));
+  ctx.imageSmoothingEnabled = s < 1; ctx.imageSmoothingQuality = 'high';
+  const f = frameAt(now);
+  const ti = terrain[f].complete ? terrain[f] : terrain.find(i => i.complete);
+  ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 20 * s;
+  if (ti) ctx.drawImage(ti, 0, 0, MW, MH);
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+  if (showGrid) {   // the dual grid: display tiles are offset half a cell from the logical grid
+    ctx.strokeStyle = 'rgba(255,0,200,.55)'; ctx.lineWidth = 1 / scale;
+    ctx.beginPath();
+    for (let x = T / 2; x < MW; x += T) { ctx.moveTo(x, 0); ctx.lineTo(x, MH); }
+    for (let y = T / 2; y < MH; y += T) { ctx.moveTo(0, y); ctx.lineTo(MW, y); }
+    ctx.stroke();
+  }
+  const order = ents.slice().sort((a, b) => a.ground() - b.ground());
+  for (const e of order) e.draw(now);
+  if (focus && now < focusUntil) {
+    const [x, y, w, h] = focus.bbox(), pulse = .5 + .5 * Math.sin(now * 8);
+    ctx.strokeStyle = 'rgba(224,110,50,' + (.5 + .5 * pulse) + ')'; ctx.lineWidth = 2.5 / scale;
+    ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+  }
+  requestAnimationFrame(draw);
+}
+
+// ---------- legend ----------
+function buildLegend() {
+  const L = document.getElementById('legend');
+  const counts = { terrain: {}, pairs: new Set() };
+  const names = ['water', 'dirt', 'roads', 'grass', 'forest', 'mountain'];
+  const firstCell = {};
+  const byChar = { W: 'water', D: 'dirt', R: 'roads', G: 'grass', F: 'forest', M: 'mountain' };
+  W.grid.forEach((row, y) => Array.from(row).forEach((c, x) => {
+    const n = byChar[c] || names[c] || c; counts.terrain[n] = (counts.terrain[n] || 0) + 1;
+    if (!firstCell[n] || (Math.abs(x - W.w / 2) + Math.abs(y - W.h / 2)) < firstCell[n].d) firstCell[n] = { x, y, d: Math.abs(x - W.w / 2) + Math.abs(y - W.h / 2) };
+  }));
+  let html = '<h2>Terrain <span>6 bases · 15 borders</span></h2>' +
+    '<p>Every terrain meets every other somewhere on the map, drawn with the corner-Wang transition atlases on a dual grid. Toggle <b>Grid</b> to see the display tiles.</p>';
+  const swatch = { water: '#8fb8d6', dirt: '#c9a47a', roads: '#bdb6a6', grass: '#b7cf8e', forest: '#6f8f4e', mountain: '#a9a39a' };
+  for (const n of names) {
+    const c = firstCell[n]; if (!c) continue;
+    html += `<div class="item" data-fx="${(c.x + .5) * T}" data-fy="${(c.y + .5) * T}"><canvas class="thumb" data-crop="${c.x},${c.y}"></canvas><div><div class="name">${pretty(n)}</div><div class="note">${counts.terrain[n]} cells</div></div></div>`;
+  }
+  const sec = (title, list, sub) => {
+    html += `<h2>${title} <span>${sub || list.length}</span></h2>`;
+    list.forEach(e => {
+      const i = ents.indexOf(e);
+      html += `<div class="item" data-ent="${i}"><canvas class="thumb" data-ent="${i}"></canvas><div><div class="name">${e.label}</div><div class="note">${e.note}</div></div></div>`;
+    });
+  };
+  sec('Structures', ents.filter(e => e.kind === 'structure'));
+  sec('Creatures', ents.filter(e => e.kind === 'monster'), '11 kinds');
+  sec('Heroes', ents.filter(e => e.kind === 'hero'));
+  sec('NPCs', ents.filter(e => e.kind === 'npc'));
+  L.innerHTML = html;
+  L.querySelectorAll('.item').forEach(el => el.onclick = () => {
+    L.querySelectorAll('.item.on').forEach(o => o.classList.remove('on')); el.classList.add('on');
+    if (el.dataset.ent) { const e = ents[+el.dataset.ent];
+      focus = e; focusUntil = now + 3.5;
+      flyTo(e.cx(), e.cy(), e.kind === 'structure' || (e.ref.box && e.ref.box[0] > 64) ? 2.5 : 3.5);
+    } else { focus = null; flyTo(+el.dataset.fx, +el.dataset.fy, 2.5); }
+    if (innerWidth <= 720) { L.classList.add('hidden'); document.getElementById('leg').setAttribute('aria-pressed', false); }
+  });
+  paintThumbs();
+}
+function paintThumbs() {
+  document.querySelectorAll('#legend canvas.thumb').forEach(c => {
+    c.width = 72; c.height = 72; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    const go = () => {
+      g.clearRect(0, 0, 72, 72);
+      if (c.dataset.crop) { const [x, y] = c.dataset.crop.split(',').map(Number);
+        const im = terrain[0]; if (!im.complete) return im.addEventListener('load', go, { once: true });
+        g.drawImage(im, x * T, y * T, T, T, 0, 0, 72, 72); return; }
+      const e = ents[+c.dataset.ent]; let src, sw, sh;
+      if (e.kind === 'monster') { const m = e.ref; const st = m.seq[0][0] === 'gone' ? 'idle' : m.seq[0][0];
+        const fc = m.patrol ? 'down' : m.facing;
+        const sp = W.sprites[m.creature + '/' + st + '/' + fc] || Object.entries(W.sprites).find(([k]) => k.startsWith(m.creature + '/'))[1];
+        src = img(sp.file); sw = sp.w; sh = sp.h;
+      } else if (e.kind === 'structure') { src = img(e.ref.file); sw = e.ref.w; sh = e.ref.h; }
+      else { src = img(e.ref.file); sw = T; sh = T; }
+      if (!src.complete) return src.addEventListener('load', go, { once: true });
+      const k = Math.min(72 / sw, 72 / sh);
+      g.imageSmoothingEnabled = k < 1;
+      g.drawImage(src, 0, 0, sw, sh, (72 - sw * k) / 2, (72 - sh * k) / 2, sw * k, sh * k);
+    };
+    go();
+  });
+}
+
+// ---------- boot ----------
+document.getElementById('sub').textContent = `${W.w}×${W.h} tiles · ${W.monsters.length} creatures · ${W.people.length} people`;
+resize(); scale = fitScale(); clampView(); label();
+{ // #x,y,zoom in tiles opens on a spot: #13,13,3
+  const h = location.hash.slice(1).split(',').map(Number);
+  if (h.length === 3 && h.every(isFinite)) {
+    scale = Math.min(MAXS, Math.max(MINS, h[2])); const [px, py] = center();
+    ox = px - h[0] * T * scale; oy = py - h[1] * T * scale; clampView(); label();
+  }
+}
+addEventListener('resize', () => { const c = [(vw / 2 - ox) / scale, (vh / 2 - oy) / scale]; resize();
+  ox = vw / 2 - c[0] * scale; oy = vh / 2 - c[1] * scale; clampView(); });
+buildLegend();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
