@@ -68,6 +68,11 @@ body.noui .showui { display: block; }
 .hint { position: fixed; left: 12px; bottom: 12px; background: var(--panel); color: var(--muted);
   border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 12px;
   box-shadow: var(--shadow); }
+.hint b { color: var(--ink); font-weight: 600; }
+#toast { position: fixed; left: 50%; top: 70px; transform: translate(-50%, -8px); opacity: 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 14px;
+  box-shadow: var(--shadow); transition: opacity .3s, transform .3s; pointer-events: none; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
 @media (max-width: 720px) {
   .bar { top: 8px; left: 8px; right: 8px; gap: 6px; }
   .title small { display: none; }
@@ -94,10 +99,15 @@ body.noui .showui { display: block; }
     <button id="z3" title="Close-up">3×</button>
   </div>
   <div class="group" role="group" aria-label="Options">
-    <button id="play" aria-pressed="false" title="Pause / play">Pause</button>
+    <button id="play" aria-pressed="false" title="Pause / play (P)">Pause</button>
+    <button id="follow" aria-pressed="false" title="Camera follows your hero (F)">Follow</button>
     <button id="grid" aria-pressed="false" title="Show the dual display grid">Grid</button>
     <button id="hex" aria-pressed="false" title="D&D-style hex overlay (H)">Hex</button>
     <button id="hideui" title="Hide all controls (Tab)">Hide UI</button>
+  </div>
+  <div class="group" role="group" aria-label="Play as">
+    <button id="male" aria-pressed="true" title="Play the male hero">♂ Hero</button>
+    <button id="female" aria-pressed="false" title="Play the female hero — or setHero('female') in the console">♀ Hero</button>
   </div>
   <div class="spacer"></div>
   <div class="group"><button id="leg" aria-pressed="true">Legend</button></div>
@@ -106,95 +116,4913 @@ body.noui .showui { display: block; }
 <aside id="legend"></aside>
 <div id="tip"></div>
 <button id="showui" class="showui" title="Show controls (Tab)" aria-label="Show controls">☰</button>
-<div class="hint">Drag to pan · wheel or pinch to zoom · click anything in the legend to fly to it</div>
+<div class="hint"><b>WASD</b> move · <b>Space</b> strike · drag to pan · wheel to zoom · <span id="reset"></span></div>
+<div id="toast"></div>
 
 <script>
-const W = {"tile":64,"frames":6,"fps":10,"w":51,"h":34,"terrain":["terrain/frame_0.webp","terrain/frame_1.webp","terrain/frame_2.webp","terrain/frame_3.webp","terrain/frame_4.webp","terrain/frame_5.webp"],"grid":["MMMMMMMMMMMMMMMMMMMMMRMMMMWWMMMMMMMMMMPPPPPPPPPPPMM","MMMMMMMMMMMMMMMMMMMMMRMMMWWMMMMMMMMMMMPPPPPPPPPPPMM","MMMMMDDDDDGMMGGMMMGGMRGGWWMMMMMMMMMMMMPPPPPPPPPPPMM","MMGGGDDDDDGGGGGGGGGGGRGGWWGMMMMMMMMMMMPPPPPPPPPPMMM","FFFFGDDDDDGGGGGGGGGGGRGGGWWGGMMMMMMMMMPPPPPPPPMMMMM","FFFFFGGGDGGGGGGGGGGGGRGGGWWGGGGMMMGGMMMPPPPPPMMMMMM","FFFFFFGGDGGGGGGGGGGGGRGGGGWWGGGGGFFFGMMMPPPPMMMMGGG","FFFFFFFGDGGGGGGGGGGGGRGGGGGWWGGFFFFFGGMMMMMMMMGGGGG","FFFFFFFGGDGGGGGGRRGGGRGGGGGWWFFFFFFFFFFMMMMMMGGGGGG","FFFFFFFFGDGGGGGGRRGGGRGGGGGGWWFFFFFFFFFFMMMMGGGGGGG","FFFFFFFFGDGGGGGGRRGGGRGGGGGGWWFFFFFFFFFFFGGGGIIIIIG","FFFFFFFGGDGGGGGGRRGGGRGGGGGGGWWGFFFFFFFFFGIIIIIIIII","FFFFFFGGGDGGGGGGRRGGGRGGGGGGGWWGGFFFFFFFFIIIIIIIIII","FFFRRRRRRRRRRRRRRRRRRRRRRRRRRRWWGGGGFFFFFIIIIIIIIII","FFFFFGGGGGGGGGGGGRGGGGGGDDDDDDDWWWWWWWIIIIIIIIIIIII","FFFFFFGGGGGGGFFFGRGGGGGGDDDDDDWWWWWWWWIIIIIIIIIIIIG","FFFFFGGGGGGGGFFGGRGGGGGGDDDDDDWWWWWWWWWIIIIIIIIGGGG","FFFFGGGGGDDDDDGGGRGGWWGGGGGDDWWWWWWWWWWWWDDGGDDDDDG","FFFFGGGGGDDDDDGGGRGWWWGGGGGDDWWWWWWWWWWWWDDGGDDDDDG","FFFGGGGGGDDDDDGGGRGGGWGGGGGDDWWWWWWWWWWWWDDGGGRGGGG","FFFGGGGGGRRRRRRRRRGGGGDDDDGGDDWWWWWWWWWWWDDGGGRGGGG","FFFFGGGGGGGGGGGGGRGGGGDDDDGGDDWWWWWWWWWWWDDGGFRFFGG","FFFFFGGGGGGGGGGGGRRRRGDDDDGGGDDWWWWWWWWWWDDGFFRFFFF","FFFFFFGGGGGGGGGGGGGGRGGGGGGGGGDDWWWWWWWWDDGFFFRFFFF","FFFFFGGGGGGGGGGGGGGGRGGGGGGGGGDDWWWWWWWWDDGFFFRFFFF","FFFSSGGGGGGGGGGGGGGGRGGGDDDDDGGDDWWWWWWDDGGGFFRFFFF","SSSSSSSSSGGGGGGDDDDGRGGGDDDDDGGGDDWWWWDDGGGGGFRFFFF","SSSSSSSSSSSSGGGDDDDGRGGGDDDDDGGGDDDDDGGGGGGGGGRFFFF","SSSSWWSSSSSSSGGDRRRRRGGGGGGGGGSSSGGGGGGGGGGGGGRGGGG","SSSSWWWSSSSSSSSGGGGGRGGGGGGGGSSSSSGGGGGGGGGGGGRGGGG","SSSSSSSSSSSSSSSGGGGGRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR","SSSSSSSSSWWSSSGGGGGGGGGGGGGGGGGGGGGGGGMMMMMGGGGGGGG","SWWSSSSSSSWSSGGGGGGGGGGGGGGGGGGGGGGGMMMMPMMMMGGGGGG","SSSSSSSSSSSSGGGGGGGGGGGGGGGGGGGGGGGMMMMPPPMMMMGGGGG"],"structures":[{"name":"castle","x":16,"y":6,"note":"Castle keep","file":"sprites/structures/castle.png","w":128,"h":128,"fw":2,"fh":2},{"name":"tower","x":24,"y":5,"note":"Watchtower over the river","file":"sprites/structures/tower.png","w":64,"h":128,"fw":1,"fh":2},{"name":"dungeon","x":7,"y":2,"note":"Barrow at the foot of the crags","file":"sprites/structures/dungeon.png","w":64,"h":64,"fw":1,"fh":1},{"name":"town_hamlet","x":6,"y":12,"note":"Woodcutters' hamlet at the forest trail","file":"sprites/structures/town_hamlet.png","w":64,"h":64,"fw":1,"fh":1},{"name":"town_crossroads","x":22,"y":12,"note":"Crossroads inn where the pass road meets the east road","file":"sprites/structures/town_crossroads.png","w":128,"h":64,"fw":2,"fh":1},{"name":"town_market","x":26,"y":14,"note":"Lakeside market","file":"sprites/structures/town_market.png","w":128,"h":64,"fw":2,"fh":1},{"name":"town_village","x":10,"y":18,"note":"Farming village","file":"sprites/structures/town_village.png","w":128,"h":128,"fw":2,"fh":2},{"name":"town_hamlet","x":16,"y":26,"note":"Stilt hamlet at the edge of the bog","file":"sprites/structures/town_hamlet.png","w":64,"h":64,"fw":1,"fh":1},{"name":"tower","x":13,"y":24,"note":"Bog watchtower","file":"sprites/structures/tower.png","w":64,"h":128,"fw":1,"fh":2},{"name":"dungeon","x":47,"y":17,"note":"Frozen barrow under the peaks","file":"sprites/structures/dungeon.png","w":64,"h":64,"fw":1,"fh":1},{"name":"town_crossroads","x":34,"y":29,"note":"Ferry inn on the south shore","file":"sprites/structures/town_crossroads.png","w":128,"h":64,"fw":2,"fh":1},{"name":"town_village","x":47,"y":31,"note":"Eastern village","file":"sprites/structures/town_village.png","w":128,"h":128,"fw":2,"fh":2}],"monsters":[{"creature":"dragon","seq":[["fire_breath",2],["idle",2],["attack",1],["fly",4]],"facing":"left","x":31,"y":3,"box":[128,128],"patrol":null,"note":"Dragon on its crag","tier":5,"rank":"boss"},{"creature":"ogre","seq":[["idle",3],["attack",1]],"facing":"right","x":5,"y":2,"box":[64,128],"patrol":null,"note":"Ogre guarding the barrow","tier":4,"rank":"miniboss"},{"creature":"skeleton","seq":[["cast",2],["idle",2]],"facing":"down","x":8,"y":3,"box":[64,64],"patrol":null,"note":"Skeleton at the barrow door","tier":2,"rank":"normal"},{"creature":"bat","seq":[["fly",1]],"facing":"right","x":10,"y":5,"box":[64,64],"patrol":[[10,5],[13,5],[13,7],[10,7]],"note":"Bat circling the barrow","tier":1,"rank":"normal"},{"creature":"wraith","seq":[["cast",2],["idle",2],["walk",2]],"facing":"right","x":3,"y":9,"box":[64,64],"patrol":null,"note":"Wraith in the deep wood","tier":3,"rank":"normal"},{"creature":"spider","seq":[["web",2],["idle",3],["attack",1]],"facing":"down","x":4,"y":6,"box":[64,64],"patrol":null,"note":"Spider in the forest","tier":3,"rank":"normal"},{"creature":"wolf","seq":[["walk",1]],"facing":"right","x":10,"y":8,"box":[64,64],"patrol":[[10,8],[10,11],[13,11],[13,8]],"note":"Wolf prowling the trail","tier":2,"rank":"normal"},{"creature":"goblin","seq":[["attack",3],["hurt",1],["attack",2],["hurt",1],["die",1],["poof",1],["gone",12],["idle",3]],"facing":"right","x":12,"y":13,"box":[64,64],"patrol":null,"note":"Goblin ambush on the west road","tier":2,"rank":"normal"},{"creature":"orc","seq":[["walk",1]],"facing":"right","x":18,"y":13,"box":[64,64],"patrol":[[18,13],[21,13],[21,15],[18,15]],"note":"Orc marching the crossroads","tier":3,"rank":"normal"},{"creature":"rat","seq":[["walk",1]],"facing":"right","x":24,"y":17,"box":[64,64],"patrol":[[24,17],[27,17],[27,19],[24,19]],"note":"Rat raiding the market","tier":1,"rank":"normal"},{"creature":"slime","seq":[["idle",3],["split",1],["attack",1],["idle",2]],"facing":"left","x":22,"y":17,"box":[64,64],"patrol":null,"note":"Slime by the pond","tier":1,"rank":"normal"},{"creature":"slime","seq":[["walk",1]],"facing":"left","x":28,"y":21,"box":[64,64],"patrol":[[28,21],[29,23],[26,23],[26,21]],"note":"Slime oozing along the beach","tier":1,"rank":"normal"},{"creature":"slime","seq":[["idle",3],["split",1],["idle",2]],"facing":"down","x":7,"y":27,"box":[64,64],"patrol":null,"note":"Bog slime","tier":1,"rank":"normal"},{"creature":"wraith","seq":[["cast",2],["idle",3]],"facing":"left","x":11,"y":30,"box":[64,64],"patrol":null,"note":"Wraith haunting the bog","tier":3,"rank":"normal"},{"creature":"spider","seq":[["walk",1]],"facing":"right","x":3,"y":30,"box":[64,64],"patrol":[[3,30],[7,30],[7,32],[3,32]],"note":"Spider stalking the bog","tier":3,"rank":"normal"},{"creature":"bat","seq":[["fly",1]],"facing":"right","x":6,"y":25,"box":[64,64],"patrol":[[6,25],[10,25],[10,27],[6,27]],"note":"Bat over the reeds","tier":1,"rank":"normal"},{"creature":"wolf","seq":[["walk",1]],"facing":"right","x":42,"y":12,"box":[64,64],"patrol":[[42,12],[48,12],[48,14],[42,14]],"note":"Ice wolf on the frozen field","tier":2,"rank":"normal"},{"creature":"skeleton","seq":[["idle",3],["attack",1]],"facing":"left","x":49,"y":18,"box":[64,64],"patrol":null,"note":"Skeleton at the frozen barrow","tier":2,"rank":"normal"},{"creature":"orc","seq":[["walk",1]],"facing":"right","x":24,"y":30,"box":[64,64],"patrol":[[24,30],[31,30]],"note":"Orc on the south road","tier":3,"rank":"normal"},{"creature":"ogre","seq":[["idle",3],["attack",1]],"facing":"down","x":37,"y":28,"box":[64,128],"patrol":null,"note":"Ogre by the spur","tier":4,"rank":"miniboss"},{"creature":"rat","seq":[["walk",1]],"facing":"right","x":15,"y":29,"box":[64,64],"patrol":[[15,29],[18,29]],"note":"Rat in the hamlet yard","tier":1,"rank":"normal"},{"creature":"goblin","seq":[["idle",2],["attack",1]],"facing":"down","x":41,"y":29,"box":[64,64],"patrol":null,"note":"Goblin lurking at the spur","tier":2,"rank":"normal"}],"people":[{"body":"hero","build":"plate","facing":"left","x":13,"y":13,"note":"Hero in plate, fighting the goblin","file":"people/hero_plate_left.png","kind":"hero"},{"body":"hero2","build":"ranger","facing":"right","x":8,"y":10,"note":"Ranger tracking the wolf","file":"people/hero2_ranger_right.png","kind":"hero"},{"body":"hero","build":"dragon","facing":"right","x":28,"y":5,"note":"Hero in dragon armour facing the dragon","file":"people/hero_dragon_right.png","kind":"hero"},{"body":"hero2","build":"light","facing":"right","x":29,"y":6,"note":"Paladin backing up the dragon hunt","file":"people/hero2_light_right.png","kind":"hero"},{"body":"hero","build":"dark","facing":"left","x":6,"y":4,"note":"Dark knight at the barrow","file":"people/hero_dark_left.png","kind":"hero"},{"body":"hero2","build":"battlemage","facing":"down","x":15,"y":10,"note":"Battlemage on the castle road","file":"people/hero2_battlemage_down.png","kind":"hero"},{"body":"m_burly","build":"guard","facing":"down","x":15,"y":8,"note":"Castle guard","file":"people/m_burly_guard_down.png","kind":"npc"},{"body":"f_athletic","build":"watchman","facing":"down","x":18,"y":8,"note":"Castle watch","file":"people/f_athletic_watchman_down.png","kind":"npc"},{"body":"f_slender","build":"queen","facing":"down","x":16,"y":9,"note":"The queen at the gate","file":"people/f_slender_queen_down.png","kind":"npc"},{"body":"m_elder","build":"noble","facing":"right","x":14,"y":9,"note":"An old noble","file":"people/m_elder_noble_right.png","kind":"npc"},{"body":"m_stocky","build":"watchman","facing":"left","x":25,"y":7,"note":"Tower watchman","file":"people/m_stocky_watchman_left.png","kind":"npc"},{"body":"m_portly","build":"innkeeper","facing":"down","x":24,"y":12,"note":"Innkeeper","file":"people/m_portly_innkeeper_down.png","kind":"npc"},{"body":"f_curvy","build":"barmaid","facing":"up","x":22,"y":14,"note":"Barmaid","file":"people/f_curvy_barmaid_up.png","kind":"npc"},{"body":"m_lanky","build":"bard","facing":"down","x":20,"y":14,"note":"Bard at the crossroads","file":"people/m_lanky_bard_down.png","kind":"npc"},{"body":"m_stocky","build":"merchant","facing":"down","x":26,"y":15,"note":"Merchant","file":"people/m_stocky_merchant_down.png","kind":"npc"},{"body":"f_stout","build":"farmer","facing":"right","x":28,"y":15,"note":"Farmer selling at market","file":"people/f_stout_farmer_right.png","kind":"npc"},{"body":"m_lanky","build":"villager","facing":"up","x":27,"y":16,"note":"Villager browsing","file":"people/m_lanky_villager_up.png","kind":"npc"},{"body":"f_elder","build":"sage","facing":"right","x":9,"y":19,"note":"Village sage","file":"people/f_elder_sage_right.png","kind":"npc"},{"body":"m_elder","build":"farmer","facing":"down","x":23,"y":21,"note":"Old farmer in his field","file":"people/m_elder_farmer_down.png","kind":"npc"},{"body":"m_burly","build":"smith","facing":"left","x":13,"y":18,"note":"Blacksmith","file":"people/m_burly_smith_left.png","kind":"npc"},{"body":"f_slender","build":"villager","facing":"down","x":12,"y":19,"note":"Villager","file":"people/f_slender_villager_down.png","kind":"npc"},{"body":"f_athletic","build":"hunter","facing":"down","x":7,"y":12,"note":"Hunter at the hamlet","file":"people/f_athletic_hunter_down.png","kind":"npc"},{"body":"m_portly","build":"priest","facing":"down","x":15,"y":12,"note":"Priest at the roadside","file":"people/m_portly_priest_down.png","kind":"npc"},{"body":"m_lanky","build":"cultist","facing":"left","x":9,"y":4,"note":"Cultist at the barrow","file":"people/m_lanky_cultist_left.png","kind":"npc"},{"body":"f_curvy","build":"wizard","facing":"down","x":23,"y":5,"note":"Wizard at the tower","file":"people/f_curvy_wizard_down.png","kind":"npc"},{"body":"f_elder","build":"monk","facing":"up","x":14,"y":21,"note":"Monk on the south road","file":"people/f_elder_monk_up.png","kind":"npc"},{"body":"m_stocky","build":"hunter","facing":"right","x":28,"y":19,"note":"Angler on the beach","file":"people/m_stocky_hunter_right.png","kind":"npc"},{"body":"hero","build":"ranger","facing":"right","x":13,"y":29,"note":"Hero wading into the bog","file":"people/hero_ranger_right.png","kind":"hero"},{"body":"f_elder","build":"cultist","facing":"down","x":17,"y":27,"note":"Bog witch","file":"people/f_elder_cultist_down.png","kind":"npc"},{"body":"m_burly","build":"farmer","facing":"left","x":26,"y":26,"note":"Farmer in the south field","file":"people/m_burly_farmer_left.png","kind":"npc"},{"body":"hero2","build":"battlemage","facing":"up","x":44,"y":15,"note":"Battlemage crossing the ice","file":"people/hero2_battlemage_up.png","kind":"hero"},{"body":"hero","build":"light","facing":"right","x":41,"y":11,"note":"Paladin hunting the ice wolf","file":"people/hero_light_right.png","kind":"hero"},{"body":"m_elder","build":"monk","facing":"down","x":45,"y":18,"note":"Hermit of the peaks","file":"people/m_elder_monk_down.png","kind":"npc"},{"body":"f_stout","build":"innkeeper","facing":"down","x":33,"y":31,"note":"Ferry innkeeper","file":"people/f_stout_innkeeper_down.png","kind":"npc"},{"body":"m_lanky","build":"merchant","facing":"right","x":38,"y":30,"note":"Pedlar on the east road","file":"people/m_lanky_merchant_right.png","kind":"npc"},{"body":"f_slender","build":"villager","facing":"down","x":45,"y":32,"note":"Villager in the east","file":"people/f_slender_villager_down.png","kind":"npc"},{"body":"m_portly","build":"smith","facing":"left","x":49,"y":30,"note":"Eastern smith","file":"people/m_portly_smith_left.png","kind":"npc"},{"body":"hero2","build":"plate","facing":"left","x":21,"y":29,"note":"Knight on the south road","file":"people/hero2_plate_left.png","kind":"hero"}],"sprites":{"dragon/fly/left":{"file":"sprites/monsters/dragon/fly_left.png","w":128,"h":128,"ax":0,"ay":0,"loops":true},"dragon/attack/left":{"file":"sprites/monsters/dragon/attack_left.png","w":192,"h":128,"ax":64,"ay":0,"loops":true},"dragon/fire_breath/left":{"file":"sprites/monsters/dragon/fire_breath_left.png","w":256,"h":128,"ax":128,"ay":0,"loops":true},"dragon/idle/left":{"file":"sprites/monsters/dragon/idle_left.png","w":128,"h":128,"ax":0,"ay":0,"loops":true},"ogre/attack/right":{"file":"sprites/monsters/ogre/attack_right.png","w":192,"h":128,"ax":64,"ay":0,"loops":true},"ogre/idle/right":{"file":"sprites/monsters/ogre/idle_right.png","w":64,"h":128,"ax":0,"ay":0,"loops":true},"skeleton/cast/down":{"file":"sprites/monsters/skeleton/cast_down.png","w":64,"h":128,"ax":0,"ay":64,"loops":true},"skeleton/idle/down":{"file":"sprites/monsters/skeleton/idle_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"bat/fly/down":{"file":"sprites/monsters/bat/fly_down.png","w":64,"h":128,"ax":0,"ay":64,"loops":true},"bat/fly/left":{"file":"sprites/monsters/bat/fly_left.png","w":64,"h":128,"ax":0,"ay":64,"loops":true},"bat/fly/right":{"file":"sprites/monsters/bat/fly_right.png","w":64,"h":128,"ax":0,"ay":64,"loops":true},"bat/fly/up":{"file":"sprites/monsters/bat/fly_up.png","w":64,"h":128,"ax":0,"ay":64,"loops":true},"wraith/walk/right":{"file":"sprites/monsters/wraith/walk_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wraith/cast/right":{"file":"sprites/monsters/wraith/cast_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wraith/idle/right":{"file":"sprites/monsters/wraith/idle_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"spider/web/down":{"file":"sprites/monsters/spider/web_down.png","w":128,"h":64,"ax":0,"ay":0,"loops":true},"spider/attack/down":{"file":"sprites/monsters/spider/attack_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"spider/idle/down":{"file":"sprites/monsters/spider/idle_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wolf/walk/down":{"file":"sprites/monsters/wolf/walk_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wolf/walk/left":{"file":"sprites/monsters/wolf/walk_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wolf/walk/right":{"file":"sprites/monsters/wolf/walk_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wolf/walk/up":{"file":"sprites/monsters/wolf/walk_up.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"goblin/poof/right":{"file":"sprites/monsters/goblin/poof_right.png","w":128,"h":64,"ax":64,"ay":0,"loops":false},"goblin/idle/right":{"file":"sprites/monsters/goblin/idle_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"goblin/hurt/right":{"file":"sprites/monsters/goblin/hurt_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"goblin/die/right":{"file":"sprites/monsters/goblin/die_right.png","w":128,"h":64,"ax":64,"ay":0,"loops":false},"goblin/attack/right":{"file":"sprites/monsters/goblin/attack_right.png","w":128,"h":64,"ax":0,"ay":0,"loops":true},"orc/walk/down":{"file":"sprites/monsters/orc/walk_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"orc/walk/left":{"file":"sprites/monsters/orc/walk_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"orc/walk/right":{"file":"sprites/monsters/orc/walk_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"orc/walk/up":{"file":"sprites/monsters/orc/walk_up.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"rat/walk/down":{"file":"sprites/monsters/rat/walk_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"rat/walk/left":{"file":"sprites/monsters/rat/walk_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"rat/walk/right":{"file":"sprites/monsters/rat/walk_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"rat/walk/up":{"file":"sprites/monsters/rat/walk_up.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"slime/split/left":{"file":"sprites/monsters/slime/split_left.png","w":128,"h":64,"ax":64,"ay":0,"loops":true},"slime/attack/left":{"file":"sprites/monsters/slime/attack_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"slime/idle/left":{"file":"sprites/monsters/slime/idle_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"slime/walk/down":{"file":"sprites/monsters/slime/walk_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"slime/walk/left":{"file":"sprites/monsters/slime/walk_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"slime/walk/right":{"file":"sprites/monsters/slime/walk_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"slime/walk/up":{"file":"sprites/monsters/slime/walk_up.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"slime/split/down":{"file":"sprites/monsters/slime/split_down.png","w":128,"h":64,"ax":0,"ay":0,"loops":true},"slime/idle/down":{"file":"sprites/monsters/slime/idle_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wraith/cast/left":{"file":"sprites/monsters/wraith/cast_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"wraith/idle/left":{"file":"sprites/monsters/wraith/idle_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"spider/walk/down":{"file":"sprites/monsters/spider/walk_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"spider/walk/left":{"file":"sprites/monsters/spider/walk_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"spider/walk/right":{"file":"sprites/monsters/spider/walk_right.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"spider/walk/up":{"file":"sprites/monsters/spider/walk_up.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"skeleton/attack/left":{"file":"sprites/monsters/skeleton/attack_left.png","w":128,"h":64,"ax":64,"ay":0,"loops":true},"skeleton/idle/left":{"file":"sprites/monsters/skeleton/idle_left.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"ogre/attack/down":{"file":"sprites/monsters/ogre/attack_down.png","w":128,"h":192,"ax":0,"ay":64,"loops":true},"ogre/idle/down":{"file":"sprites/monsters/ogre/idle_down.png","w":64,"h":128,"ax":0,"ay":0,"loops":true},"goblin/attack/down":{"file":"sprites/monsters/goblin/attack_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true},"goblin/idle/down":{"file":"sprites/monsters/goblin/idle_down.png","w":64,"h":64,"ax":0,"ay":0,"loops":true}}};
+const W = {
+ "tile": 64,
+ "frames": 6,
+ "fps": 10,
+ "w": 51,
+ "h": 34,
+ "terrain": [
+  "terrain/frame_0.webp",
+  "terrain/frame_1.webp",
+  "terrain/frame_2.webp",
+  "terrain/frame_3.webp",
+  "terrain/frame_4.webp",
+  "terrain/frame_5.webp"
+ ],
+ "grid": [
+  "MMMMMMMMMMMMMMMMMMMMMRMMMMWWMMMMMMMMMMPPPPPPPPPPPMM",
+  "MMMMMMMMMMMMMMMMMMMMMRMMMWWMMMMMMMMMMMPPPPPPPPPPPMM",
+  "MMMMMDDDDDGMMGGMMMGGMRGGWWMMMMMMMMMMMMPPPPPPPPPPPMM",
+  "MMGGGDDDDDGGGGGGGGGGGRGGWWGMMMMMMMMMMMPPPPPPPPPPMMM",
+  "FFFFGDDDDDGGGGGGGGGGGRGGGWWGGMMMMMMMMMPPPPPPPPMMMMM",
+  "FFFFFGGGDGGGGGGGGGGGGRGGGWWGGGGMMMGGMMMPPPPPPMMMMMM",
+  "FFFFFFGGDGGGGGGGGGGGGRGGGGWWGGGGGFFFGMMMPPPPMMMMGGG",
+  "FFFFFFFGDGGGGGGGGGGGGRGGGGGWWGGFFFFFGGMMMMMMMMGGGGG",
+  "FFFFFFFGGDGGGGGGRRGGGRGGGGGWWFFFFFFFFFFMMMMMMGGGGGG",
+  "FFFFFFFFGDGGGGGGRRGGGRGGGGGGWWFFFFFFFFFFMMMMGGGGGGG",
+  "FFFFFFFFGDGGGGGGRRGGGRGGGGGGWWFFFFFFFFFFFGGGGIIIIIG",
+  "FFFFFFFGGDGGGGGGRRGGGRGGGGGGGWWGFFFFFFFFFGIIIIIIIII",
+  "FFFFFFGGGDGGGGGGRRGGGRGGGGGGGWWGGFFFFFFFFIIIIIIIIII",
+  "FFFRRRRRRRRRRRRRRRRRRRRRRRRRRRWWGGGGFFFFFIIIIIIIIII",
+  "FFFFFGGGGGGGGGGGGRGGGGGGDDDDDDDWWWWWWWIIIIIIIIIIIII",
+  "FFFFFFGGGGGGGFFFGRGGGGGGDDDDDDWWWWWWWWIIIIIIIIIIIIG",
+  "FFFFFGGGGGGGGFFGGRGGGGGGDDDDDDWWWWWWWWWIIIIIIIIGGGG",
+  "FFFFGGGGGDDDDDGGGRGGWWGGGGGDDWWWWWWWWWWWWDDGGDDDDDG",
+  "FFFFGGGGGDDDDDGGGRGWWWGGGGGDDWWWWWWWWWWWWDDGGDDDDDG",
+  "FFFGGGGGGDDDDDGGGRGGGWGGGGGDDWWWWWWWWWWWWDDGGGRGGGG",
+  "FFFGGGGGGRRRRRRRRRGGGGDDDDGGDDWWWWWWWWWWWDDGGGRGGGG",
+  "FFFFGGGGGGGGGGGGGRGGGGDDDDGGDDWWWWWWWWWWWDDGGFRFFGG",
+  "FFFFFGGGGGGGGGGGGRRRRGDDDDGGGDDWWWWWWWWWWDDGFFRFFFF",
+  "FFFFFFGGGGGGGGGGGGGGRGGGGGGGGGDDWWWWWWWWDDGFFFRFFFF",
+  "FFFFFGGGGGGGGGGGGGGGRGGGGGGGGGDDWWWWWWWWDDGFFFRFFFF",
+  "FFFSSGGGGGGGGGGGGGGGRGGGDDDDDGGDDWWWWWWDDGGGFFRFFFF",
+  "SSSSSSSSSGGGGGGDDDDGRGGGDDDDDGGGDDWWWWDDGGGGGFRFFFF",
+  "SSSSSSSSSSSSGGGDDDDGRGGGDDDDDGGGDDDDDGGGGGGGGGRFFFF",
+  "SSSSWWSSSSSSSGGDRRRRRGGGGGGGGGSSSGGGGGGGGGGGGGRGGGG",
+  "SSSSWWWSSSSSSSSGGGGGRGGGGGGGGSSSSSGGGGGGGGGGGGRGGGG",
+  "SSSSSSSSSSSSSSSGGGGGRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+  "SSSSSSSSSWWSSSGGGGGGGGGGGGGGGGGGGGGGGGMMMMMGGGGGGGG",
+  "SWWSSSSSSSWSSGGGGGGGGGGGGGGGGGGGGGGGMMMMPMMMMGGGGGG",
+  "SSSSSSSSSSSSGGGGGGGGGGGGGGGGGGGGGGGMMMMPPPMMMMGGGGG"
+ ],
+ "structures": [
+  {
+   "name": "castle",
+   "x": 16,
+   "y": 6,
+   "note": "Castle keep",
+   "file": "sprites/structures/castle.png",
+   "w": 128,
+   "h": 128,
+   "fw": 2,
+   "fh": 2
+  },
+  {
+   "name": "tower",
+   "x": 24,
+   "y": 5,
+   "note": "Watchtower over the river",
+   "file": "sprites/structures/tower.png",
+   "w": 64,
+   "h": 128,
+   "fw": 1,
+   "fh": 2
+  },
+  {
+   "name": "dungeon",
+   "x": 7,
+   "y": 2,
+   "note": "Barrow at the foot of the crags",
+   "file": "sprites/structures/dungeon.png",
+   "w": 64,
+   "h": 64,
+   "fw": 1,
+   "fh": 1
+  },
+  {
+   "name": "town_hamlet",
+   "x": 6,
+   "y": 12,
+   "note": "Woodcutters' hamlet at the forest trail",
+   "file": "sprites/structures/town_hamlet.png",
+   "w": 64,
+   "h": 64,
+   "fw": 1,
+   "fh": 1
+  },
+  {
+   "name": "town_crossroads",
+   "x": 22,
+   "y": 12,
+   "note": "Crossroads inn where the pass road meets the east road",
+   "file": "sprites/structures/town_crossroads.png",
+   "w": 128,
+   "h": 64,
+   "fw": 2,
+   "fh": 1
+  },
+  {
+   "name": "town_market",
+   "x": 26,
+   "y": 14,
+   "note": "Lakeside market",
+   "file": "sprites/structures/town_market.png",
+   "w": 128,
+   "h": 64,
+   "fw": 2,
+   "fh": 1
+  },
+  {
+   "name": "town_village",
+   "x": 10,
+   "y": 18,
+   "note": "Farming village",
+   "file": "sprites/structures/town_village.png",
+   "w": 128,
+   "h": 128,
+   "fw": 2,
+   "fh": 2
+  },
+  {
+   "name": "town_hamlet",
+   "x": 16,
+   "y": 26,
+   "note": "Stilt hamlet at the edge of the bog",
+   "file": "sprites/structures/town_hamlet.png",
+   "w": 64,
+   "h": 64,
+   "fw": 1,
+   "fh": 1
+  },
+  {
+   "name": "tower",
+   "x": 13,
+   "y": 24,
+   "note": "Bog watchtower",
+   "file": "sprites/structures/tower.png",
+   "w": 64,
+   "h": 128,
+   "fw": 1,
+   "fh": 2
+  },
+  {
+   "name": "dungeon",
+   "x": 47,
+   "y": 17,
+   "note": "Frozen barrow under the peaks",
+   "file": "sprites/structures/dungeon.png",
+   "w": 64,
+   "h": 64,
+   "fw": 1,
+   "fh": 1
+  },
+  {
+   "name": "town_crossroads",
+   "x": 34,
+   "y": 29,
+   "note": "Ferry inn on the south shore",
+   "file": "sprites/structures/town_crossroads.png",
+   "w": 128,
+   "h": 64,
+   "fw": 2,
+   "fh": 1
+  },
+  {
+   "name": "town_village",
+   "x": 47,
+   "y": 31,
+   "note": "Eastern village",
+   "file": "sprites/structures/town_village.png",
+   "w": 128,
+   "h": 128,
+   "fw": 2,
+   "fh": 2
+  }
+ ],
+ "monsters": [
+  {
+   "id": "dragon",
+   "creature": "dragon",
+   "x": 31,
+   "y": 3,
+   "facing": "left",
+   "note": "Dragon on its crag",
+   "seq": [
+    [
+     "idle",
+     3
+    ],
+    [
+     "fire_breath",
+     1
+    ],
+    [
+     "idle",
+     3
+    ],
+    [
+     "fly",
+     4
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    128,
+    128
+   ],
+   "tier": 5,
+   "rank": "boss",
+   "hp": null
+  },
+  {
+   "id": "ogre_barrow",
+   "creature": "ogre",
+   "x": 5,
+   "y": 2,
+   "facing": "right",
+   "note": "Ogre guarding the barrow",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "attack",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    128
+   ],
+   "tier": 4,
+   "rank": "miniboss",
+   "hp": 9
+  },
+  {
+   "id": "skeleton_door",
+   "creature": "skeleton",
+   "x": 8,
+   "y": 3,
+   "facing": "down",
+   "note": "Skeleton at the barrow door",
+   "seq": [
+    [
+     "cast",
+     1
+    ],
+    [
+     "idle",
+     4
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 2,
+   "rank": "normal",
+   "hp": 4
+  },
+  {
+   "id": "bat_barrow",
+   "creature": "bat",
+   "x": 10,
+   "y": 5,
+   "facing": "right",
+   "note": "Bat circling the barrow",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     10,
+     5
+    ],
+    [
+     13,
+     5
+    ],
+    [
+     13,
+     7
+    ],
+    [
+     10,
+     7
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 1,
+   "rank": "normal",
+   "hp": 3
+  },
+  {
+   "id": "wraith_wood",
+   "creature": "wraith",
+   "x": 3,
+   "y": 9,
+   "facing": "up",
+   "note": "Wraith in the deep wood",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "cast",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 3,
+   "rank": "normal",
+   "hp": 5
+  },
+  {
+   "id": "spider_wood",
+   "creature": "spider",
+   "x": 4,
+   "y": 6,
+   "facing": "down",
+   "note": "Spider in the forest",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "web",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 3,
+   "rank": "normal",
+   "hp": 5
+  },
+  {
+   "id": "wolf_trail",
+   "creature": "wolf",
+   "x": 10,
+   "y": 8,
+   "facing": "right",
+   "note": "Wolf prowling the trail",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     10,
+     8
+    ],
+    [
+     10,
+     11
+    ],
+    [
+     13,
+     11
+    ],
+    [
+     13,
+     8
+    ]
+   ],
+   "spawn": [
+    13,
+    10
+   ],
+   "box": [
+    64,
+    64
+   ],
+   "tier": 2,
+   "rank": "normal",
+   "hp": 4
+  },
+  {
+   "id": "goblin_west",
+   "creature": "goblin",
+   "x": 12,
+   "y": 13,
+   "facing": "right",
+   "note": "Goblin ambush on the west road",
+   "seq": [
+    [
+     "idle",
+     4
+    ]
+   ],
+   "patrol": null,
+   "spawn": [
+    5,
+    14
+   ],
+   "box": [
+    64,
+    64
+   ],
+   "tier": 2,
+   "rank": "normal",
+   "hp": 4
+  },
+  {
+   "id": "orc_cross",
+   "creature": "orc",
+   "x": 18,
+   "y": 13,
+   "facing": "right",
+   "note": "Orc marching the crossroads",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     18,
+     13
+    ],
+    [
+     21,
+     13
+    ],
+    [
+     21,
+     15
+    ],
+    [
+     18,
+     15
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 3,
+   "rank": "normal",
+   "hp": 5
+  },
+  {
+   "id": "rat_market",
+   "creature": "rat",
+   "x": 24,
+   "y": 17,
+   "facing": "right",
+   "note": "Rat raiding the market",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     24,
+     17
+    ],
+    [
+     27,
+     17
+    ],
+    [
+     27,
+     19
+    ],
+    [
+     24,
+     19
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 1,
+   "rank": "normal",
+   "hp": 3
+  },
+  {
+   "id": "slime_pond",
+   "creature": "slime",
+   "x": 22,
+   "y": 17,
+   "facing": "right",
+   "note": "Slime by the pond",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "split",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 1,
+   "rank": "normal",
+   "hp": 3
+  },
+  {
+   "id": "slime_beach",
+   "creature": "slime",
+   "x": 28,
+   "y": 21,
+   "facing": "left",
+   "note": "Slime oozing along the beach",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     28,
+     21
+    ],
+    [
+     28,
+     23
+    ],
+    [
+     26,
+     23
+    ],
+    [
+     26,
+     21
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 1,
+   "rank": "normal",
+   "hp": 3
+  },
+  {
+   "id": "slime_bog",
+   "creature": "slime",
+   "x": 7,
+   "y": 27,
+   "facing": "down",
+   "note": "Bog slime",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "split",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 1,
+   "rank": "normal",
+   "hp": 3
+  },
+  {
+   "id": "wraith_bog",
+   "creature": "wraith",
+   "x": 11,
+   "y": 30,
+   "facing": "right",
+   "note": "Wraith haunting the bog",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "cast",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 3,
+   "rank": "normal",
+   "hp": 5
+  },
+  {
+   "id": "spider_bog",
+   "creature": "spider",
+   "x": 3,
+   "y": 30,
+   "facing": "right",
+   "note": "Spider stalking the bog",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     3,
+     30
+    ],
+    [
+     7,
+     30
+    ],
+    [
+     7,
+     32
+    ],
+    [
+     3,
+     32
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 3,
+   "rank": "normal",
+   "hp": 5
+  },
+  {
+   "id": "bat_reeds",
+   "creature": "bat",
+   "x": 6,
+   "y": 25,
+   "facing": "right",
+   "note": "Bat over the reeds",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     6,
+     25
+    ],
+    [
+     10,
+     25
+    ],
+    [
+     10,
+     27
+    ],
+    [
+     6,
+     27
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 1,
+   "rank": "normal",
+   "hp": 3
+  },
+  {
+   "id": "wolf_ice",
+   "creature": "wolf",
+   "x": 42,
+   "y": 12,
+   "facing": "right",
+   "note": "Ice wolf on the frozen field",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     42,
+     12
+    ],
+    [
+     48,
+     12
+    ],
+    [
+     48,
+     14
+    ],
+    [
+     42,
+     14
+    ]
+   ],
+   "spawn": [
+    48,
+    13
+   ],
+   "box": [
+    64,
+    64
+   ],
+   "tier": 2,
+   "rank": "normal",
+   "hp": 4
+  },
+  {
+   "id": "skeleton_ice",
+   "creature": "skeleton",
+   "x": 49,
+   "y": 18,
+   "facing": "left",
+   "note": "Skeleton at the frozen barrow",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "attack",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 2,
+   "rank": "normal",
+   "hp": 4
+  },
+  {
+   "id": "orc_south",
+   "creature": "orc",
+   "x": 24,
+   "y": 30,
+   "facing": "right",
+   "note": "Orc on the south road",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     24,
+     30
+    ],
+    [
+     31,
+     30
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 3,
+   "rank": "normal",
+   "hp": 5
+  },
+  {
+   "id": "ogre_spur",
+   "creature": "ogre",
+   "x": 37,
+   "y": 28,
+   "facing": "down",
+   "note": "Ogre by the spur",
+   "seq": [
+    [
+     "idle",
+     4
+    ],
+    [
+     "attack",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    128
+   ],
+   "tier": 4,
+   "rank": "miniboss",
+   "hp": 9
+  },
+  {
+   "id": "rat_yard",
+   "creature": "rat",
+   "x": 15,
+   "y": 29,
+   "facing": "right",
+   "note": "Rat in the hamlet yard",
+   "seq": [
+    [
+     "idle",
+     3
+    ]
+   ],
+   "patrol": [
+    [
+     15,
+     29
+    ],
+    [
+     18,
+     29
+    ]
+   ],
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 1,
+   "rank": "normal",
+   "hp": 3
+  },
+  {
+   "id": "goblin_spur",
+   "creature": "goblin",
+   "x": 41,
+   "y": 29,
+   "facing": "down",
+   "note": "Goblin lurking at the spur",
+   "seq": [
+    [
+     "idle",
+     3
+    ],
+    [
+     "attack",
+     1
+    ]
+   ],
+   "patrol": null,
+   "spawn": null,
+   "box": [
+    64,
+    64
+   ],
+   "tier": 2,
+   "rank": "normal",
+   "hp": 4
+  }
+ ],
+ "people": [
+  {
+   "id": "knight_west",
+   "body": "hero",
+   "build": "plate",
+   "facing": "left",
+   "x": 13,
+   "y": 13,
+   "note": "Hero in plate, holding the west road",
+   "path": null,
+   "sheet": "people/hero_plate.png",
+   "kind": "hero"
+  },
+  {
+   "id": "ranger",
+   "body": "hero2",
+   "build": "ranger",
+   "facing": "right",
+   "x": 8,
+   "y": 10,
+   "note": "Ranger tracking the wolf",
+   "path": null,
+   "sheet": "people/hero2_ranger.png",
+   "kind": "hero"
+  },
+  {
+   "id": "dragonslayer",
+   "body": "hero",
+   "build": "dragon",
+   "facing": "right",
+   "x": 28,
+   "y": 5,
+   "note": "Hero in dragon armour facing the dragon",
+   "path": null,
+   "sheet": "people/hero_dragon.png",
+   "kind": "hero"
+  },
+  {
+   "id": "paladin_dragon",
+   "body": "hero2",
+   "build": "light",
+   "facing": "right",
+   "x": 29,
+   "y": 6,
+   "note": "Paladin backing up the dragon hunt",
+   "path": null,
+   "sheet": "people/hero2_light.png",
+   "kind": "hero"
+  },
+  {
+   "id": "dark_knight",
+   "body": "hero",
+   "build": "dark",
+   "facing": "left",
+   "x": 6,
+   "y": 4,
+   "note": "Dark knight at the barrow",
+   "path": null,
+   "sheet": "people/hero_dark.png",
+   "kind": "hero"
+  },
+  {
+   "id": "battlemage",
+   "body": "hero2",
+   "build": "battlemage",
+   "facing": "down",
+   "x": 15,
+   "y": 10,
+   "note": "Battlemage on the castle road",
+   "path": [
+    [
+     15,
+     10
+    ],
+    [
+     14,
+     10
+    ],
+    [
+     14,
+     11
+    ],
+    [
+     15,
+     11
+    ]
+   ],
+   "sheet": "people/hero2_battlemage.png",
+   "kind": "hero"
+  },
+  {
+   "id": "guard",
+   "body": "m_burly",
+   "build": "guard",
+   "facing": "down",
+   "x": 15,
+   "y": 8,
+   "note": "Castle guard",
+   "path": [
+    [
+     15,
+     8
+    ],
+    [
+     13,
+     8
+    ]
+   ],
+   "sheet": "people/m_burly_guard.png",
+   "kind": "npc"
+  },
+  {
+   "id": "watch",
+   "body": "f_athletic",
+   "build": "watchman",
+   "facing": "down",
+   "x": 18,
+   "y": 8,
+   "note": "Castle watch",
+   "path": [
+    [
+     18,
+     8
+    ],
+    [
+     19,
+     8
+    ],
+    [
+     19,
+     10
+    ],
+    [
+     18,
+     10
+    ]
+   ],
+   "sheet": "people/f_athletic_watchman.png",
+   "kind": "npc"
+  },
+  {
+   "id": "queen",
+   "body": "f_slender",
+   "build": "queen",
+   "facing": "down",
+   "x": 16,
+   "y": 9,
+   "note": "The queen at the gate",
+   "path": null,
+   "sheet": "people/f_slender_queen.png",
+   "kind": "npc"
+  },
+  {
+   "id": "noble",
+   "body": "m_elder",
+   "build": "noble",
+   "facing": "right",
+   "x": 14,
+   "y": 9,
+   "note": "An old noble",
+   "path": [
+    [
+     14,
+     9
+    ],
+    [
+     12,
+     9
+    ]
+   ],
+   "sheet": "people/m_elder_noble.png",
+   "kind": "npc"
+  },
+  {
+   "id": "tower_watch",
+   "body": "m_stocky",
+   "build": "watchman",
+   "facing": "left",
+   "x": 25,
+   "y": 7,
+   "note": "Tower watchman",
+   "path": [
+    [
+     25,
+     7
+    ],
+    [
+     25,
+     9
+    ],
+    [
+     23,
+     9
+    ]
+   ],
+   "sheet": "people/m_stocky_watchman.png",
+   "kind": "npc"
+  },
+  {
+   "id": "innkeeper",
+   "body": "m_portly",
+   "build": "innkeeper",
+   "facing": "down",
+   "x": 24,
+   "y": 12,
+   "note": "Innkeeper",
+   "path": null,
+   "sheet": "people/m_portly_innkeeper.png",
+   "kind": "npc"
+  },
+  {
+   "id": "barmaid",
+   "body": "f_curvy",
+   "build": "barmaid",
+   "facing": "up",
+   "x": 22,
+   "y": 14,
+   "note": "Barmaid",
+   "path": [
+    [
+     22,
+     14
+    ],
+    [
+     22,
+     16
+    ],
+    [
+     23,
+     16
+    ]
+   ],
+   "sheet": "people/f_curvy_barmaid.png",
+   "kind": "npc"
+  },
+  {
+   "id": "bard",
+   "body": "m_lanky",
+   "build": "bard",
+   "facing": "down",
+   "x": 20,
+   "y": 14,
+   "note": "Bard at the crossroads",
+   "path": [
+    [
+     20,
+     14
+    ],
+    [
+     20,
+     16
+    ],
+    [
+     19,
+     16
+    ]
+   ],
+   "sheet": "people/m_lanky_bard.png",
+   "kind": "npc"
+  },
+  {
+   "id": "merchant",
+   "body": "m_stocky",
+   "build": "merchant",
+   "facing": "down",
+   "x": 26,
+   "y": 15,
+   "note": "Merchant",
+   "path": null,
+   "sheet": "people/m_stocky_merchant.png",
+   "kind": "npc"
+  },
+  {
+   "id": "farmer_market",
+   "body": "f_stout",
+   "build": "farmer",
+   "facing": "right",
+   "x": 28,
+   "y": 15,
+   "note": "Farmer selling at market",
+   "path": null,
+   "sheet": "people/f_stout_farmer.png",
+   "kind": "npc"
+  },
+  {
+   "id": "browser",
+   "body": "m_lanky",
+   "build": "villager",
+   "facing": "up",
+   "x": 27,
+   "y": 16,
+   "note": "Villager browsing",
+   "path": [
+    [
+     27,
+     16
+    ],
+    [
+     29,
+     16
+    ]
+   ],
+   "sheet": "people/m_lanky_villager.png",
+   "kind": "npc"
+  },
+  {
+   "id": "sage",
+   "body": "f_elder",
+   "build": "sage",
+   "facing": "right",
+   "x": 9,
+   "y": 19,
+   "note": "Village sage",
+   "path": null,
+   "sheet": "people/f_elder_sage.png",
+   "kind": "npc"
+  },
+  {
+   "id": "old_farmer",
+   "body": "m_elder",
+   "build": "farmer",
+   "facing": "down",
+   "x": 23,
+   "y": 21,
+   "note": "Old farmer in his field",
+   "path": [
+    [
+     23,
+     21
+    ],
+    [
+     25,
+     21
+    ],
+    [
+     25,
+     20
+    ]
+   ],
+   "sheet": "people/m_elder_farmer.png",
+   "kind": "npc"
+  },
+  {
+   "id": "smith",
+   "body": "m_burly",
+   "build": "smith",
+   "facing": "left",
+   "x": 13,
+   "y": 18,
+   "note": "Blacksmith",
+   "path": null,
+   "sheet": "people/m_burly_smith.png",
+   "kind": "npc"
+  },
+  {
+   "id": "villager",
+   "body": "f_slender",
+   "build": "villager",
+   "facing": "down",
+   "x": 12,
+   "y": 19,
+   "note": "Villager",
+   "path": [
+    [
+     12,
+     19
+    ],
+    [
+     13,
+     19
+    ],
+    [
+     13,
+     21
+    ],
+    [
+     11,
+     21
+    ]
+   ],
+   "sheet": "people/f_slender_villager.png",
+   "kind": "npc"
+  },
+  {
+   "id": "hunter",
+   "body": "f_athletic",
+   "build": "hunter",
+   "facing": "down",
+   "x": 7,
+   "y": 12,
+   "note": "Hunter at the hamlet",
+   "path": [
+    [
+     7,
+     12
+    ],
+    [
+     8,
+     12
+    ],
+    [
+     8,
+     11
+    ]
+   ],
+   "sheet": "people/f_athletic_hunter.png",
+   "kind": "npc"
+  },
+  {
+   "id": "priest",
+   "body": "m_portly",
+   "build": "priest",
+   "facing": "down",
+   "x": 15,
+   "y": 12,
+   "note": "Priest at the roadside",
+   "path": [
+    [
+     15,
+     12
+    ],
+    [
+     14,
+     12
+    ]
+   ],
+   "sheet": "people/m_portly_priest.png",
+   "kind": "npc"
+  },
+  {
+   "id": "cultist",
+   "body": "m_lanky",
+   "build": "cultist",
+   "facing": "left",
+   "x": 9,
+   "y": 4,
+   "note": "Cultist at the barrow",
+   "path": null,
+   "sheet": "people/m_lanky_cultist.png",
+   "kind": "npc"
+  },
+  {
+   "id": "wizard",
+   "body": "f_curvy",
+   "build": "wizard",
+   "facing": "down",
+   "x": 23,
+   "y": 5,
+   "note": "Wizard at the tower",
+   "path": [
+    [
+     23,
+     5
+    ],
+    [
+     23,
+     3
+    ],
+    [
+     22,
+     3
+    ]
+   ],
+   "sheet": "people/f_curvy_wizard.png",
+   "kind": "npc"
+  },
+  {
+   "id": "monk",
+   "body": "f_elder",
+   "build": "monk",
+   "facing": "up",
+   "x": 14,
+   "y": 21,
+   "note": "Monk on the south road",
+   "path": [
+    [
+     14,
+     21
+    ],
+    [
+     16,
+     21
+    ],
+    [
+     16,
+     22
+    ]
+   ],
+   "sheet": "people/f_elder_monk.png",
+   "kind": "npc"
+  },
+  {
+   "id": "angler",
+   "body": "m_stocky",
+   "build": "hunter",
+   "facing": "right",
+   "x": 28,
+   "y": 19,
+   "note": "Angler on the beach",
+   "path": null,
+   "sheet": "people/m_stocky_hunter.png",
+   "kind": "npc"
+  },
+  {
+   "id": "bog_hero",
+   "body": "hero",
+   "build": "ranger",
+   "facing": "right",
+   "x": 13,
+   "y": 29,
+   "note": "Hero wading into the bog",
+   "path": null,
+   "sheet": "people/hero_ranger.png",
+   "kind": "hero"
+  },
+  {
+   "id": "bog_witch",
+   "body": "f_elder",
+   "build": "cultist",
+   "facing": "down",
+   "x": 17,
+   "y": 27,
+   "note": "Bog witch",
+   "path": [
+    [
+     17,
+     27
+    ],
+    [
+     18,
+     27
+    ]
+   ],
+   "sheet": "people/f_elder_cultist.png",
+   "kind": "npc"
+  },
+  {
+   "id": "south_farmer",
+   "body": "m_burly",
+   "build": "farmer",
+   "facing": "left",
+   "x": 26,
+   "y": 26,
+   "note": "Farmer in the south field",
+   "path": [
+    [
+     26,
+     26
+    ],
+    [
+     26,
+     27
+    ],
+    [
+     28,
+     27
+    ]
+   ],
+   "sheet": "people/m_burly_farmer.png",
+   "kind": "npc"
+  },
+  {
+   "id": "ice_mage",
+   "body": "hero2",
+   "build": "battlemage",
+   "facing": "up",
+   "x": 44,
+   "y": 15,
+   "note": "Battlemage crossing the ice",
+   "path": [
+    [
+     44,
+     15
+    ],
+    [
+     44,
+     13
+    ],
+    [
+     46,
+     13
+    ]
+   ],
+   "sheet": "people/hero2_battlemage.png",
+   "kind": "hero"
+  },
+  {
+   "id": "paladin_ice",
+   "body": "hero",
+   "build": "light",
+   "facing": "right",
+   "x": 41,
+   "y": 11,
+   "note": "Paladin hunting the ice wolf",
+   "path": null,
+   "sheet": "people/hero_light.png",
+   "kind": "hero"
+  },
+  {
+   "id": "hermit",
+   "body": "m_elder",
+   "build": "monk",
+   "facing": "down",
+   "x": 45,
+   "y": 18,
+   "note": "Hermit of the peaks",
+   "path": null,
+   "sheet": "people/m_elder_monk.png",
+   "kind": "npc"
+  },
+  {
+   "id": "ferry_inn",
+   "body": "f_stout",
+   "build": "innkeeper",
+   "facing": "down",
+   "x": 33,
+   "y": 31,
+   "note": "Ferry innkeeper",
+   "path": null,
+   "sheet": "people/f_stout_innkeeper.png",
+   "kind": "npc"
+  },
+  {
+   "id": "pedlar",
+   "body": "m_lanky",
+   "build": "merchant",
+   "facing": "right",
+   "x": 38,
+   "y": 30,
+   "note": "Pedlar on the east road",
+   "path": [
+    [
+     38,
+     30
+    ],
+    [
+     43,
+     30
+    ]
+   ],
+   "sheet": "people/m_lanky_merchant.png",
+   "kind": "npc"
+  },
+  {
+   "id": "east_villager",
+   "body": "f_slender",
+   "build": "villager",
+   "facing": "down",
+   "x": 45,
+   "y": 32,
+   "note": "Villager in the east",
+   "path": [
+    [
+     45,
+     32
+    ],
+    [
+     46,
+     32
+    ]
+   ],
+   "sheet": "people/f_slender_villager.png",
+   "kind": "npc"
+  },
+  {
+   "id": "east_smith",
+   "body": "m_portly",
+   "build": "smith",
+   "facing": "left",
+   "x": 49,
+   "y": 30,
+   "note": "Eastern smith",
+   "path": null,
+   "sheet": "people/m_portly_smith.png",
+   "kind": "npc"
+  },
+  {
+   "id": "south_knight",
+   "body": "hero2",
+   "build": "plate",
+   "facing": "left",
+   "x": 21,
+   "y": 29,
+   "note": "Knight on the south road",
+   "path": [
+    [
+     21,
+     29
+    ],
+    [
+     21,
+     27
+    ]
+   ],
+   "sheet": "people/hero2_plate.png",
+   "kind": "hero"
+  }
+ ],
+ "duels": [
+  {
+   "a": [
+    "knight_west"
+   ],
+   "b": "goblin_west",
+   "a_at": [
+    null
+   ],
+   "b_at": null,
+   "winner": "a",
+   "every": [
+    30,
+    45
+   ]
+  },
+  {
+   "a": [
+    "ranger"
+   ],
+   "b": "wolf_trail",
+   "a_at": [
+    [
+     9,
+     10
+    ]
+   ],
+   "b_at": [
+    10,
+    10
+   ],
+   "winner": "a",
+   "every": [
+    40,
+    60
+   ]
+  },
+  {
+   "a": [
+    "dragonslayer",
+    "paladin_dragon"
+   ],
+   "b": "dragon",
+   "a_at": [
+    [
+     30,
+     5
+    ],
+    [
+     30,
+     6
+    ]
+   ],
+   "b_at": null,
+   "winner": null,
+   "every": [
+    35,
+    50
+   ]
+  },
+  {
+   "a": [
+    "dark_knight"
+   ],
+   "b": "ogre_barrow",
+   "a_at": [
+    [
+     6,
+     3
+    ]
+   ],
+   "b_at": null,
+   "winner": "a",
+   "every": [
+    45,
+    65
+   ]
+  },
+  {
+   "a": [
+    "paladin_ice"
+   ],
+   "b": "wolf_ice",
+   "a_at": [
+    null
+   ],
+   "b_at": [
+    42,
+    11
+   ],
+   "winner": "a",
+   "every": [
+    40,
+    60
+   ]
+  },
+  {
+   "a": [
+    "bog_hero"
+   ],
+   "b": "wraith_bog",
+   "a_at": [
+    [
+     12,
+     30
+    ]
+   ],
+   "b_at": null,
+   "winner": "a",
+   "every": [
+    45,
+    65
+   ]
+  },
+  {
+   "a": [
+    "ogre_spur"
+   ],
+   "b": "orc_south",
+   "a_at": [
+    null
+   ],
+   "b_at": [
+    37,
+    30
+   ],
+   "winner": "a",
+   "every": [
+    40,
+    60
+   ]
+  },
+  {
+   "a": [
+    "wraith_wood"
+   ],
+   "b": "spider_wood",
+   "a_at": [
+    [
+     3,
+     8
+    ]
+   ],
+   "b_at": [
+    3,
+    7
+   ],
+   "winner": "either",
+   "every": [
+    45,
+    70
+   ]
+  },
+  {
+   "a": [
+    "slime_pond"
+   ],
+   "b": "rat_market",
+   "a_at": [
+    null
+   ],
+   "b_at": [
+    23,
+    17
+   ],
+   "winner": "either",
+   "every": [
+    40,
+    60
+   ]
+  }
+ ],
+ "facings": [
+  "down",
+  "left",
+  "right",
+  "up"
+ ],
+ "people_states": [
+  "idle",
+  "walk",
+  "attack",
+  "hurt"
+ ],
+ "sprites": {
+  "dragon": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 0,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 0,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 0,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 0,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 128,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 128,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 128,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 128,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 256,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 256,
+     "w": 192,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 256,
+     "w": 192,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 256,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 384,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 384,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 384,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 384,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 512,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 512,
+     "w": 192,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 512,
+     "w": 192,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 512,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "fly": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 640,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 640,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 640,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 640,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "fire_breath": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 768,
+     "w": 128,
+     "h": 192,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 768,
+     "w": 256,
+     "h": 128,
+     "ax": 128,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 768,
+     "w": 256,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 768,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 3,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/dragon_down.png",
+     "y": 960,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/dragon_left.png",
+     "y": 896,
+     "w": 192,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/dragon_right.png",
+     "y": 896,
+     "w": 192,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/dragon_up.png",
+     "y": 896,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "ogre": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/ogre_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/ogre_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/ogre_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/ogre_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/ogre_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/ogre_left.png",
+     "y": 128,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/ogre_right.png",
+     "y": 128,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/ogre_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/ogre_down.png",
+     "y": 256,
+     "w": 128,
+     "h": 192,
+     "ax": 0,
+     "ay": 64
+    },
+    "left": {
+     "sheet": "monsters/ogre_left.png",
+     "y": 256,
+     "w": 192,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/ogre_right.png",
+     "y": 256,
+     "w": 192,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/ogre_up.png",
+     "y": 256,
+     "w": 128,
+     "h": 192,
+     "ax": 64,
+     "ay": 64
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/ogre_down.png",
+     "y": 448,
+     "w": 64,
+     "h": 192,
+     "ax": 0,
+     "ay": 64
+    },
+    "left": {
+     "sheet": "monsters/ogre_left.png",
+     "y": 384,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/ogre_right.png",
+     "y": 384,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/ogre_up.png",
+     "y": 448,
+     "w": 128,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/ogre_down.png",
+     "y": 640,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/ogre_left.png",
+     "y": 512,
+     "w": 128,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/ogre_right.png",
+     "y": 512,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/ogre_up.png",
+     "y": 576,
+     "w": 256,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/ogre_down.png",
+     "y": 768,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/ogre_left.png",
+     "y": 640,
+     "w": 128,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/ogre_right.png",
+     "y": 640,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/ogre_up.png",
+     "y": 704,
+     "w": 256,
+     "h": 128,
+     "ax": 64,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "skeleton": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/skeleton_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/skeleton_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/skeleton_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/skeleton_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/skeleton_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/skeleton_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/skeleton_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/skeleton_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/skeleton_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/skeleton_left.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/skeleton_right.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/skeleton_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/skeleton_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/skeleton_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/skeleton_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/skeleton_up.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/skeleton_down.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/skeleton_left.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/skeleton_right.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/skeleton_up.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "cast": {
+    "down": {
+     "sheet": "monsters/skeleton_down.png",
+     "y": 320,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "left": {
+     "sheet": "monsters/skeleton_left.png",
+     "y": 320,
+     "w": 128,
+     "h": 128,
+     "ax": 64,
+     "ay": 64
+    },
+    "right": {
+     "sheet": "monsters/skeleton_right.png",
+     "y": 320,
+     "w": 128,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "up": {
+     "sheet": "monsters/skeleton_up.png",
+     "y": 384,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "loops": true,
+    "impact": 3,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/skeleton_down.png",
+     "y": 448,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/skeleton_left.png",
+     "y": 448,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/skeleton_right.png",
+     "y": 448,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/skeleton_up.png",
+     "y": 512,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "bat": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/bat_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/bat_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/bat_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/bat_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/bat_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/bat_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/bat_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/bat_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/bat_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/bat_left.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/bat_right.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/bat_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/bat_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/bat_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/bat_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/bat_up.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/bat_down.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/bat_left.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/bat_right.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/bat_up.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "fly": {
+    "down": {
+     "sheet": "monsters/bat_down.png",
+     "y": 320,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "left": {
+     "sheet": "monsters/bat_left.png",
+     "y": 320,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "right": {
+     "sheet": "monsters/bat_right.png",
+     "y": 320,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "up": {
+     "sheet": "monsters/bat_up.png",
+     "y": 320,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/bat_down.png",
+     "y": 448,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/bat_left.png",
+     "y": 448,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/bat_right.png",
+     "y": 448,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/bat_up.png",
+     "y": 448,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "wraith": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/wraith_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wraith_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wraith_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wraith_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/wraith_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wraith_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wraith_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wraith_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/wraith_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wraith_left.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wraith_right.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wraith_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/wraith_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wraith_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wraith_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wraith_up.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/wraith_down.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wraith_left.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wraith_right.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wraith_up.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "cast": {
+    "down": {
+     "sheet": "monsters/wraith_down.png",
+     "y": 320,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wraith_left.png",
+     "y": 320,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wraith_right.png",
+     "y": 320,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wraith_up.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 3,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/wraith_down.png",
+     "y": 384,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wraith_left.png",
+     "y": 384,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wraith_right.png",
+     "y": 384,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wraith_up.png",
+     "y": 384,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "spider": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/spider_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/spider_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/spider_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/spider_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/spider_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/spider_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/spider_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/spider_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/spider_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/spider_left.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/spider_right.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/spider_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/spider_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/spider_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/spider_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/spider_up.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/spider_down.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/spider_left.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/spider_right.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/spider_up.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "web": {
+    "down": {
+     "sheet": "monsters/spider_down.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/spider_left.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/spider_right.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/spider_up.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 3,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/spider_down.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/spider_left.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/spider_right.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/spider_up.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "wolf": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/wolf_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wolf_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wolf_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wolf_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/wolf_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wolf_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wolf_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wolf_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/wolf_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wolf_left.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wolf_right.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wolf_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/wolf_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wolf_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wolf_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wolf_up.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/wolf_down.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wolf_left.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wolf_right.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wolf_up.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/wolf_down.png",
+     "y": 320,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/wolf_left.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/wolf_right.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/wolf_up.png",
+     "y": 320,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "goblin": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/goblin_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/goblin_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/goblin_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/goblin_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/goblin_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/goblin_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/goblin_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/goblin_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/goblin_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/goblin_left.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/goblin_right.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/goblin_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/goblin_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/goblin_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/goblin_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/goblin_up.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/goblin_down.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/goblin_left.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/goblin_right.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/goblin_up.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/goblin_down.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/goblin_left.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/goblin_right.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/goblin_up.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "orc": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/orc_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/orc_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/orc_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/orc_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/orc_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/orc_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/orc_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/orc_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/orc_down.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/orc_left.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/orc_right.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/orc_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 128,
+     "ax": 0,
+     "ay": 64
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/orc_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/orc_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/orc_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/orc_up.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/orc_down.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/orc_left.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/orc_right.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/orc_up.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/orc_down.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/orc_left.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/orc_right.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/orc_up.png",
+     "y": 384,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "rat": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/rat_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/rat_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/rat_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/rat_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/rat_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/rat_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/rat_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/rat_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/rat_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/rat_left.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/rat_right.png",
+     "y": 128,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/rat_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/rat_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/rat_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/rat_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/rat_up.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/rat_down.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/rat_left.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/rat_right.png",
+     "y": 256,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/rat_up.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/rat_down.png",
+     "y": 320,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/rat_left.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/rat_right.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/rat_up.png",
+     "y": 320,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  },
+  "slime": {
+   "idle": {
+    "down": {
+     "sheet": "monsters/slime_down.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/slime_left.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/slime_right.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/slime_up.png",
+     "y": 0,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "walk": {
+    "down": {
+     "sheet": "monsters/slime_down.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/slime_left.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/slime_right.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/slime_up.png",
+     "y": 64,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "attack": {
+    "down": {
+     "sheet": "monsters/slime_down.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/slime_left.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/slime_right.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/slime_up.png",
+     "y": 128,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 2,
+    "follows": null
+   },
+   "hurt": {
+    "down": {
+     "sheet": "monsters/slime_down.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/slime_left.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/slime_right.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/slime_up.png",
+     "y": 192,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": null,
+    "follows": null
+   },
+   "die": {
+    "down": {
+     "sheet": "monsters/slime_down.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/slime_left.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/slime_right.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/slime_up.png",
+     "y": 256,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": null
+   },
+   "split": {
+    "down": {
+     "sheet": "monsters/slime_down.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/slime_left.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 64,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/slime_right.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/slime_up.png",
+     "y": 320,
+     "w": 128,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": true,
+    "impact": 3,
+    "follows": null
+   },
+   "poof": {
+    "down": {
+     "sheet": "monsters/slime_down.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "left": {
+     "sheet": "monsters/slime_left.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "right": {
+     "sheet": "monsters/slime_right.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "up": {
+     "sheet": "monsters/slime_up.png",
+     "y": 384,
+     "w": 64,
+     "h": 64,
+     "ax": 0,
+     "ay": 0
+    },
+    "loops": false,
+    "impact": null,
+    "follows": "die"
+   }
+  }
+ },
+ "player": {
+  "x": 19,
+  "y": 12,
+  "facing": "down",
+  "build": "knight",
+  "bodies": {
+   "male": "hero",
+   "female": "hero2"
+  },
+  "sheets": {
+   "male": "people/hero_knight.png",
+   "female": "people/hero2_knight.png"
+  }
+ }
+};
 const T = W.tile, FR = W.frames, FPS = W.fps;
 const MW = W.w * T, MH = W.h * T;
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const stage = document.getElementById('stage');
 
 // ---------- images ----------
+let now = 0;        // world clock, seconds; declared first because actors stamp it at construction
 const imgs = {};
 function img(src) {
   if (!imgs[src]) { const i = new Image(); i.src = src; imgs[src] = i; }
   return imgs[src];
 }
 const terrain = W.terrain.map(img);
+const SPR = W.sprites, FACINGS = W.facings, PSTATES = W.people_states;
 W.structures.forEach(s => img(s.file));
-W.people.forEach(p => img(p.file));
-Object.values(W.sprites).forEach(s => img(s.file));
+W.people.forEach(p => img(p.sheet));
+Object.values(W.player.sheets).forEach(img);
+Object.values(SPR).forEach(c => Object.values(c).forEach(s => FACINGS.forEach(fc => s[fc] && img(s[fc].sheet))));
 
-// ---------- entities ----------
-// Every entity has a ground line (for y-sorting) and a draw(frame) at time t.
+function frameAt(t) { return Math.floor(t * FPS) % FR; }
+function pretty(s) { return s.replace(/^town_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
+
+// ---------- ground rules ----------
+// Water and rock stop you; swamp and forest slow you; ice is quick.
+const BLOCK = new Set(['W', 'M', 'P']), SLOW = { S: .6, F: .8, I: 1.15 };
+const solid = new Set();
+W.structures.forEach(s => { for (let x = s.x; x < s.x + s.fw; x++) for (let y = s.y; y < s.y + s.fh; y++) solid.add(x + ',' + y); });
+function cellAt(x, y) {
+  const cx = Math.floor(x), cy = Math.floor(y);
+  return cx < 0 || cy < 0 || cx >= W.w || cy >= W.h ? null : W.grid[cy][cx];
+}
+function walkable(x, y) { const c = cellAt(x, y); return !!c && !BLOCK.has(c) && !solid.has(Math.floor(x) + ',' + Math.floor(y)); }
+
+// ---------- clock and coroutines ----------
+// A brain is a generator: it yields seconds to wait, or a predicate to wait on.
+const ONE = FR / FPS;                       // a one-shot state lasts 0.6 s
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pickOne = a => a[Math.floor(Math.random() * a.length)];
+function co(gen) { return { gen, wait: 0, until: null, done: false }; }
+function stepCo(c) {
+  for (let n = 0; c && !c.done && n < 20; n++) {
+    if (c.until) { if (!c.until()) return; c.until = null; }
+    if (now < c.wait) return;
+    const r = c.gen.next();
+    if (r.done) { c.done = true; return; }
+    if (typeof r.value === 'number') c.wait = now + r.value;
+    else if (typeof r.value === 'function') c.until = r.value;
+    else return;
+  }
+}
+const timers = [];
+function later(dt, fn) { timers.push({ t: now + dt, fn }); }
+
+// ---------- actors ----------
+const FACE = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] };
+const dirTo = (dx, dy) => Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up');
+const PACE = { wolf: 1.7, rat: 1.4, bat: 1.6, slime: .6, spider: 1.2, ogre: .8, orc: 1, goblin: 1.2, skeleton: .9, wraith: .8, dragon: .8 };
+const SIGNATURE = { skeleton: 'cast', wraith: 'cast', spider: 'web', dragon: 'fire_breath' };
+const AGGRO = 'aggro';
+
+class Actor {
+  constructor(o) {
+    Object.assign(this, o);
+    this.home = { x: o.x, y: o.y, facing: o.facing };
+    this.reset();
+  }
+  reset() {
+    this.x = this.home.x; this.y = this.home.y; this.facing = this.home.facing;
+    this.alive = true; this.gone = false; this.hp = this.maxHp; this.goal = null;
+    this.owner = null; this.locked = 0; this.nextSwing = 0;
+    this.anim = { st: this.rest, t0: now, loop: true };
+    this.brain = co(this.think());
+  }
+  respawn() {
+    this.reset();
+    if (this.spawn) {            // reappear off at the edge of things and walk home
+      [this.x, this.y] = this.spawn;
+      const self = this;
+      this.brain = co((function* () {
+        self.go(self.home.x, self.home.y); yield () => self.arrived();
+        self.facing = self.home.facing; yield* self.think();
+      })());
+    }
+  }
+  get feet() { return [this.x + this.bw / 2 / T, this.y + this.bh / T - .15]; }
+  has(st) { return this.kind === 'monster' ? !!SPR[this.creature][st] : PSTATES.includes(st); }
+  play(st, loop = false) { if (!this.has(st)) st = this.rest; this.anim = { st, t0: now, loop }; }
+  shotDone() { return !this.anim.loop && now - this.anim.t0 >= ONE; }
+  frameNo() {
+    const n = Math.floor((now - this.anim.t0) * FPS + 1e-6);
+    return this.anim.loop ? n % FR : Math.min(n, FR - 1);
+  }
+  impact(st) { return this.kind === 'monster' ? (SPR[this.creature][st].impact ?? 2) : 2; }
+  go(x, y) { this.goal = { x, y }; }
+  chase(o) { this.goal = { chase: o }; }
+  arrived() { return !this.goal; }
+  face(o) { const [ax, ay] = this.feet, [bx, by] = o.feet; this.facing = dirTo(bx - ax, by - ay); }
+  dist(o) { const [ax, ay] = this.feet, [bx, by] = o.feet; return Math.hypot(bx - ax, by - ay); }
+  stepGoal(dt) {
+    const g = this.goal; let step = this.speed * dt;
+    if (g.chase) {
+      const [ax, ay] = this.feet, [bx, by] = g.chase.feet, d = Math.hypot(bx - ax, by - ay);
+      if (d < .95) { this.goal = null; this.play(this.rest, true); return; }
+      step = Math.min(step, d - .9);
+      const nx = (bx - ax) / d * step, ny = (by - ay) / d * step;
+      if (!walkable(ax + nx, ay + ny) && this.creature !== 'bat') { this.goal = null; this.play(this.rest, true); return; }
+      this.x += nx; this.y += ny; this.facing = dirTo(bx - ax, by - ay);
+    } else {
+      const dx = g.x - this.x, dy = g.y - this.y;
+      if (Math.abs(dx) > 1e-4) { this.x += Math.sign(dx) * Math.min(Math.abs(dx), step); this.facing = dx > 0 ? 'right' : 'left'; }
+      else if (Math.abs(dy) > 1e-4) { this.x = g.x; this.y += Math.sign(dy) * Math.min(Math.abs(dy), step); this.facing = dy > 0 ? 'down' : 'up'; }
+      else { this.x = g.x; this.y = g.y; this.goal = null; this.play(this.rest, true); return; }
+    }
+    if (this.anim.loop && this.anim.st !== this.move) this.play(this.move, true);
+  }
+  update(dt) {
+    if (this.gone) { if (now >= this.respawnAt) this.respawn(); return; }
+    if (this.shotDone()) {
+      if (this.anim.st === 'die') this.play('poof');
+      else if (this.anim.st === 'poof') { this.gone = true; this.respawnAt = now + rnd(9, 16); return; }
+      else this.play(this.goal ? this.move : this.rest, true);
+    }
+    if (!this.alive) return;
+    if (this.owner === AGGRO) this.fightPlayer();
+    if (this.goal && now >= this.locked) this.stepGoal(dt);
+    if (!this.owner && now >= this.locked) stepCo(this.brain);
+  }
+  // Struck by the player: turn on them for a while, then go back to what it was doing.
+  fightPlayer() {
+    const d = this.dist(player);
+    if (now > this.aggroUntil || d > 6) {
+      this.owner = null;
+      if (!this.roams) { this.go(this.home.x, this.home.y); this.brain = co(this.think()); }
+      return;
+    }
+    if (now < this.locked) return;
+    const reach = this.creature === 'dragon' ? 3.2 : this.bw > T || this.bh > T ? 1.6 : 1.15;
+    if (d > reach) { if (this.creature !== 'dragon') this.chase(player); return; }
+    this.goal = null; this.face(player);
+    if (now >= this.nextSwing) {
+      const move = pickOne(this.attacks);
+      this.play(move); this.locked = now + ONE; this.nextSwing = now + rnd(1.3, 2.2);
+      later(this.impact(move) / FPS, () => { if (this.alive && this.dist(player) < reach + .4) hurtPlayer(this); });
+    }
+  }
+  *think() {
+    const a = this;
+    if (a.kind === 'monster') {
+      if (a.patrol) {
+        let i = 0;
+        for (;;) {
+          i = (i + 1) % a.patrol.length; a.go(...a.patrol[i]); yield () => a.arrived();
+          if (Math.random() < .5) yield rnd(1, 3);
+        }
+      }
+      for (;;) {
+        for (const [st, n] of a.seq) { a.play(st, true); yield n * ONE; }
+        a.play(a.rest, true);
+        if (Math.random() < .35) { a.facing = pickOne(FACINGS.filter(f => f !== a.facing)); yield rnd(2, 4); a.facing = a.home.facing; }
+      }
+    }
+    if (a.path) {
+      let i = 0;
+      for (;;) {
+        yield rnd(2.5, 6);
+        if (Math.random() < .4) { const f = a.facing; a.facing = pickOne(FACINGS.filter(x => x !== f)); yield rnd(1.2, 2.5); }
+        i = (i + 1) % a.path.length; a.go(...a.path[i]); yield () => a.arrived();
+      }
+    }
+    for (;;) {
+      yield rnd(6, 14);
+      a.facing = pickOne(FACINGS.filter(f => f !== a.home.facing)); yield rnd(1.5, 3.5);
+      a.facing = a.home.facing;
+    }
+  }
+  // ----- the entity interface: legend, hover, y-sort, draw -----
+  cx() { return (this.x + this.bw / 2 / T) * T; }
+  cy() { return (this.y + this.bh / 2 / T) * T; }
+  ground() { return this.y * T + this.bh; }
+  bbox() { return this.gone ? [0, 0, 0, 0] : [this.x * T, this.y * T, this.bw, this.bh]; }
+  sprite(st, fc) {
+    if (this.kind === 'monster') {
+      const s = SPR[this.creature][st] || SPR[this.creature][this.rest];
+      const f = s[fc]; return { im: img(f.sheet), sx: 0, sy: f.y, w: f.w, h: f.h, ax: f.ax, ay: f.ay };
+    }
+    const row = Math.max(0, PSTATES.indexOf(st)) * FACINGS.length + FACINGS.indexOf(fc);
+    return { im: img(this.sheet), sx: 0, sy: row * T, w: T, h: T, ax: 0, ay: 0 };
+  }
+  draw() {
+    if (this.gone) return;
+    const s = this.sprite(this.anim.st, this.facing), f = this.frameNo();
+    if (this === player) {
+      const [fx, fy] = this.feet;
+      ctx.save(); ctx.globalAlpha = .55; ctx.strokeStyle = '#e08457'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(fx * T, fy * T - 2, 15, 5.5, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+    ctx.drawImage(s.im, s.sx + f * s.w, s.sy, s.w, s.h, Math.round(this.x * T) - s.ax, Math.round(this.y * T) - s.ay, s.w, s.h);
+  }
+  thumb() { const s = this.sprite(this.rest, this.home.facing); return { im: s.im, sx: s.sx, sy: s.sy, w: s.w, h: s.h }; }
+  status() {
+    if (this.gone) return 'respawning…';
+    const st = this.anim.st !== this.rest ? this.anim.st : this.owner && this.owner !== AGGRO ? 'squaring up' : 'idle';
+    return st.replace('_', ' ') + (this.mortal && this.alive ? ' · ' + '♥'.repeat(Math.max(0, this.hp)) : '');
+  }
+}
+
+// Hit `t` on behalf of `src`. Returns true when it was the killing blow.
+function hit(t, src, kill) {
+  if (!t.alive || t.gone) return false;
+  t.face(src);
+  if (t.mortal && (kill || --t.hp <= 0)) { t.alive = false; t.goal = null; t.play('die'); return true; }
+  t.play('hurt'); t.locked = now + ONE * .9;
+  return false;
+}
+
+const byId = {};
+const actors = [];
+W.monsters.forEach(m => {
+  const cr = m.creature, flies = cr === 'bat';
+  const a = new Actor({
+    kind: 'monster', label: pretty(cr), note: m.note, ref: m, id: m.id, creature: cr,
+    x: m.x, y: m.y, facing: m.facing, bw: m.box[0], bh: m.box[1], seq: m.seq, patrol: m.patrol,
+    spawn: m.spawn, roams: !!m.patrol, maxHp: m.hp ?? 99, mortal: m.hp != null,
+    rest: flies ? 'fly' : 'idle', move: flies || cr === 'dragon' ? 'fly' : 'walk',
+    speed: PACE[cr] || 1, attacks: ['attack'].concat(SIGNATURE[cr] ? [SIGNATURE[cr]] : []),
+  });
+  actors.push(a); byId[m.id] = a;
+});
+W.people.forEach(p => {
+  const a = new Actor({
+    kind: p.kind, label: pretty(p.body) + ' · ' + pretty(p.build), note: p.note, ref: p, id: p.id,
+    x: p.x, y: p.y, facing: p.facing, bw: T, bh: T, path: p.path, roams: !!p.path, sheet: p.sheet,
+    rest: 'idle', move: 'walk', speed: 1.1, attacks: ['attack'], mortal: false, maxHp: 99,
+  });
+  actors.push(a); byId[p.id] = a;
+});
+
+// ---------- the player ----------
+const P0 = W.player;
+const player = new Actor({
+  kind: 'player', label: 'You · Hero', note: 'WASD to move, Space to strike', id: 'player',
+  x: P0.x, y: P0.y, facing: P0.facing, bw: T, bh: T, sheet: P0.sheets.male, gender: 'male',
+  rest: 'idle', move: 'walk', speed: 2.6, attacks: ['attack'], mortal: false, maxHp: 99,
+});
+player.think = function* () { for (;;) yield 3600; };
+player.brain = co(player.think());
+const keys = {};
+let lastAxis = 'x';
+function updatePlayer(dt) {
+  const p = player;
+  if (p.shotDone()) p.play('idle', true);
+  if (now < p.locked) return;
+  const vx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0), vy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+  if (!vx && !vy) { if (p.anim.st === 'walk') p.play('idle', true); return; }
+  const [fx, fy] = p.feet, sp = p.speed * (SLOW[cellAt(fx, fy)] || 1) * dt / Math.hypot(vx, vy);
+  const ok = (x, y) => walkable(x + .3, y + .88) && walkable(x + .7, y + .88);
+  if (vx && ok(p.x + vx * sp, p.y)) p.x += vx * sp;
+  if (vy && ok(p.x, p.y + vy * sp)) p.y += vy * sp;
+  p.facing = vx && vy ? (lastAxis === 'x' ? (vx > 0 ? 'right' : 'left') : (vy > 0 ? 'down' : 'up'))
+           : vx ? (vx > 0 ? 'right' : 'left') : (vy > 0 ? 'down' : 'up');
+  if (p.anim.st !== 'walk') p.play('walk', true);
+}
+function playerStrike() {
+  const p = player;
+  if (now < p.locked) return;
+  p.play('attack'); p.locked = now + ONE;
+  later(2 / FPS, () => {
+    const [fx, fy] = p.feet, [ux, uy] = FACE[p.facing], rx = fx + ux * .75, ry = fy - .35 + uy * .75;
+    for (const m of actors) {
+      if (m.kind !== 'monster' || !m.alive || m.gone) continue;
+      const dx = Math.max(m.x - rx, 0, rx - (m.x + m.bw / T)), dy = Math.max(m.y - ry, 0, ry - (m.y + m.bh / T));
+      if (Math.hypot(dx, dy) > .55) continue;
+      if (!hit(m, p) && (!m.owner || m.owner === AGGRO)) { m.owner = AGGRO; m.aggroUntil = now + 10; }
+    }
+  });
+}
+function hurtPlayer(src) {
+  const p = player;
+  p.face(src); p.play('hurt'); p.locked = now + ONE * .8;
+  const [ux, uy] = FACE[dirTo(p.feet[0] - src.feet[0], p.feet[1] - src.feet[1])];
+  const nx = p.x + ux * .3, ny = p.y + uy * .3;
+  if (walkable(nx + .3, ny + .88) && walkable(nx + .7, ny + .88)) { p.x = nx; p.y = ny; }
+}
+window.setHero = function (g) {
+  g = /^f|^w|2/i.test(String(g)) ? 'female' : 'male';
+  player.gender = g; player.sheet = W.player.sheets[g];
+  document.getElementById('male').setAttribute('aria-pressed', g === 'male');
+  document.getElementById('female').setAttribute('aria-pressed', g === 'female');
+  if (typeof paintThumbs === 'function') paintThumbs();
+  return 'Playing the ' + g + ' hero (' + W.player.bodies[g] + ', ' + W.player.build + ')';
+};
+
+// ---------- fights ----------
+function* strike(att, tgt, kill) {
+  if (!att.alive || !tgt.alive) return;
+  att.face(tgt); att.goal = null;
+  const move = pickOne(att.attacks), k = att.impact(move);
+  att.play(move); att.locked = now + ONE;
+  yield k / FPS;
+  if (att.alive) hit(tgt, att, kill);
+  yield (FR - k) / FPS;
+}
+function* duel(D) {
+  const A = D.a.map(id => byId[id]), B = byId[D.b], all = A.concat([B]);
+  yield rnd(3, D.every[0]);
+  for (;;) {
+    yield () => all.every(e => e.alive && !e.gone && !e.owner && now >= e.locked && e.dist(player) > 2.5);
+    all.forEach(e => { e.owner = D; e.goal = null; });
+    D.a_at.forEach((at, i) => at && A[i].go(at[0], at[1]));
+    if (D.b_at) B.go(D.b_at[0], D.b_at[1]);
+    yield () => all.every(e => e.arrived() || !e.alive);
+    A.forEach(a => a.face(B)); B.face(A[0]);
+    yield .8;
+    let loser = D.winner === 'a' ? B : D.winner === 'b' ? A[0] : D.winner === 'either' ? pickOne([A[0], B]) : null;
+    if (loser && !loser.mortal) loser = null;
+    const rounds = 2 + Math.floor(Math.random() * 2);
+    for (let r = 0; r < rounds && all.every(e => e.alive); r++) {
+      for (const a of A) { yield* strike(a, B); yield rnd(.3, .6); }
+      yield* strike(B, pickOne(A)); yield rnd(.5, 1.1);
+    }
+    if (loser && all.every(e => e.alive)) {
+      yield* strike(loser === B ? pickOne(A) : B, loser, true);
+      yield 1.5;
+    }
+    for (const e of all) if (e.alive && !e.roams) e.go(e.home.x, e.home.y);
+    yield () => all.every(e => !e.alive || e.roams || e.arrived());
+    all.forEach(e => { if (e.alive && !e.roams) e.facing = e.home.facing; if (e.owner === D) e.owner = null; });
+    yield rnd(D.every[0], D.every[1]);
+  }
+}
+let directors = [];
+
+// ---------- the day: everything resets on a loop ----------
+const DAY = 360;   // seconds
+let dayStart = 0;
+function newDay(first) {
+  dayStart = now;
+  actors.forEach(a => a.reset());
+  directors = W.duels.map(D => co(duel(D)));
+  if (!first) toast('A new day in the valley');
+}
+function toast(msg) {
+  const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('on');
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2600);
+}
+let lastNow = 0;
+function simulate() {
+  const dt = Math.min(.1, Math.max(0, now - lastNow)); lastNow = now;
+  if (now - dayStart >= DAY) newDay();
+  for (let i = timers.length - 1; i >= 0; i--) if (now >= timers[i].t) { const t = timers.splice(i, 1)[0]; t.fn(); }
+  directors.forEach(stepCo);
+  actors.forEach(a => a.update(dt));
+  updatePlayer(dt);
+  const left = Math.max(0, DAY - (now - dayStart));
+  const el = document.getElementById('reset');
+  const txt = 'new day in ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0');
+  if (el.textContent !== txt) el.textContent = txt;
+}
+
+// ---------- entities: what the legend, hover and y-sort see ----------
 const ents = [];
 W.structures.forEach(s => ents.push({
   kind: 'structure', label: pretty(s.name), note: s.note, ref: s,
   cx: () => (s.x + s.fw / 2) * T, cy: () => (s.y + s.fh / 2) * T,
   ground: () => (s.y + s.fh) * T,
   bbox: () => [s.x * T, s.y * T, s.fw * T, s.fh * T],
-  draw(t) {
-    const f = frameAt(t), im = img(s.file);
+  draw() {
+    const f = frameAt(now), im = img(s.file);
     ctx.drawImage(im, f * s.w, 0, s.w, s.h, s.x * T, (s.y + s.fh) * T - s.h, s.w, s.h);
-  }
+  },
+  thumb: () => ({ im: img(s.file), sx: 0, sy: 0, w: s.w, h: s.h }),
 }));
-
-W.people.forEach((p, i) => ents.push({
-  kind: p.kind, label: pretty(p.body) + ' · ' + pretty(p.build), note: p.note, ref: p,
-  cx: () => (p.x + .5) * T, cy: () => (p.y + .5) * T, ground: () => (p.y + 1) * T,
-  bbox: () => [p.x * T, p.y * T, T, T],
-  draw(t) { ctx.drawImage(img(p.file), frameAt(t) * T, 0, T, T, p.x * T, p.y * T, T, T); }
-}));
-
-W.monsters.forEach((m, i) => {
-  const [bw, bh] = m.box;
-  // Patrol path: cumulative lengths so position is a function of time alone.
-  let path = null, total = 0;
-  if (m.patrol) {
-    const pts = m.patrol.concat([m.patrol[0]]);
-    path = []; for (let k = 0; k < pts.length - 1; k++) {
-      const a = pts[k], b = pts[k + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      path.push({ a, b, len, s: total }); total += len;
-    }
-  }
-  const speed = m.creature === 'bat' ? 1.6 : 1.1;           // tiles per second
-  const seqLen = m.seq.reduce((n, [, r]) => n + r * FR, 0);  // in frames
-  const offset = (i * 7 % 3) * FR;                           // desync, whole loops only
-  const e = {
-    kind: 'monster', label: pretty(m.creature), note: m.note, ref: m,
-    pos(t) {
-      if (!path) return [m.x, m.y, m.facing];
-      const d = (t * speed) % total;
-      const seg = path.find(q => d >= q.s && d < q.s + q.len) || path[path.length - 1];
-      const u = (d - seg.s) / seg.len, dx = seg.b[0] - seg.a[0], dy = seg.b[1] - seg.a[1];
-      const fc = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-      return [seg.a[0] + dx * u, seg.a[1] + dy * u, fc];
-    },
-    state(t) {
-      let n = (Math.floor(t * FPS) + offset) % seqLen;
-      for (const [st, r] of m.seq) { if (n < r * FR) return [st, n % FR]; n -= r * FR; }
-      return [m.seq[0][0], 0];
-    },
-    cx() { const [x] = this.pos(now); return x * T + bw / 2; },
-    cy() { const [, y] = this.pos(now); return y * T + bh / 2; },
-    ground() { const [, y] = this.pos(now); return y * T + bh; },
-    bbox() { const [x, y] = this.pos(now); return [x * T, y * T, bw, bh]; },
-    draw(t) {
-      const [x, y, fc] = this.pos(t), [st, f] = this.state(t);
-      if (st === 'gone') return;
-      const sp = W.sprites[m.creature + '/' + st + '/' + fc];
-      if (!sp) return;
-      ctx.drawImage(img(sp.file), f * sp.w, 0, sp.w, sp.h,
-        Math.round(x * T) - sp.ax, Math.round(y * T) - sp.ay, sp.w, sp.h);
-    },
-    status(t) { const [st] = this.state(t); return st === 'gone' ? 'respawning…' : st.replace('_', ' '); }
-  };
-  ents.push(e);
-});
-
-function frameAt(t) { return Math.floor(t * FPS) % FR; }
-function pretty(s) { return s.replace(/^town_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
+ents.push(player);
+actors.forEach(a => ents.push(a));
 
 // ---------- view ----------
 let dpr = 1, vw = 0, vh = 0, scale = 1, ox = 0, oy = 0;   // screen = world*scale + o
@@ -256,6 +5084,7 @@ stage.addEventListener('pointermove', e => {
     zoomAt(pinch0.s * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
   } else if (ptrs.size === 1) {
     ox += e.clientX - prev[0]; oy += e.clientY - prev[1]; clampView();
+    if (follow && Math.abs(e.clientX - prev[0]) + Math.abs(e.clientY - prev[1]) > 3) setFollow(false);
   }
   if (Math.abs(e.movementX) + Math.abs(e.movementY) > 2) moved = true;
   tip.style.display = 'none';
@@ -292,15 +5121,36 @@ document.getElementById('leg').onclick = function () {
   const h = document.getElementById('legend').classList.toggle('hidden'); this.setAttribute('aria-pressed', !h);
   if (scale <= fitScale() * 1.3 || fly) flyTo(MW / 2, MH / 2, fitScale()); else clampView();
 };
+let follow = false;
+function setFollow(on) {
+  follow = on; document.getElementById('follow').setAttribute('aria-pressed', on);
+  if (on && scale < 1.5) flyTo(player.cx(), player.cy(), 2.5);
+}
+document.getElementById('follow').onclick = () => setFollow(!follow);
+document.getElementById('male').onclick = () => setHero('male');
+document.getElementById('female').onclick = () => setHero('female');
+const MOVE = { w: 'up', a: 'left', s: 'down', d: 'right', arrowup: 'up', arrowleft: 'left', arrowdown: 'down', arrowright: 'right' };
 addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (MOVE[k]) {
+    e.preventDefault(); keys[MOVE[k]] = true;
+    lastAxis = MOVE[k] === 'left' || MOVE[k] === 'right' ? 'x' : 'y';
+    if (!follow) setFollow(true);
+    return;
+  }
+  if (e.key === ' ') { e.preventDefault(); if (!paused) playerStrike(); return; }
   if (e.key === '+' || e.key === '=') document.getElementById('zin').click();
   if (e.key === '-') document.getElementById('zout').click();
-  if (e.key === '0') document.getElementById('fit').click();
+  if (e.key === '0') { setFollow(false); document.getElementById('fit').click(); }
   if (e.key === '1') document.getElementById('z1').click();
-  if (e.key === 'h' || e.key === 'H') document.getElementById('hex').click();
+  if (k === 'h') document.getElementById('hex').click();
+  if (k === 'p') document.getElementById('play').click();
+  if (k === 'f') setFollow(!follow);
   if (e.key === 'Tab') { e.preventDefault(); setUI(document.body.classList.contains('noui')); }
-  if (e.key === ' ') { e.preventDefault(); document.getElementById('play').click(); }
 });
+addEventListener('keyup', e => { const k = MOVE[e.key.toLowerCase()]; if (k) keys[k] = false; });
+addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
 
 // ---------- hover / highlight ----------
 const tip = document.getElementById('tip');
@@ -322,10 +5172,15 @@ function hover(sx, sy, tap) {
 }
 
 // ---------- render ----------
-let now = 0;
 function draw(tn) {
   if (!paused) now = tn / 1000 - tBase;
+  simulate();
   stepFly(tn);
+  if (follow && !fly && !ptrs.size) {   // ease the camera onto the hero
+    const [px, py] = center(), k = Math.min(1, (now - (draw.last ?? now)) * 5 || .08);
+    ox += (px - player.cx() * scale - ox) * k; oy += (py - player.cy() * scale - oy) * k; clampView();
+  }
+  draw.last = now;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = getComputedStyle(document.body).backgroundColor; ctx.fillRect(0, 0, cv.width, cv.height);
   const s = scale * dpr;
@@ -345,7 +5200,7 @@ function draw(tn) {
   }
   if (showHex) drawHex();
   const order = ents.slice().sort((a, b) => a.ground() - b.ground());
-  for (const e of order) e.draw(now);
+  for (const e of order) e.draw();
   if (focus && now < focusUntil) {
     const [x, y, w, h] = focus.bbox(), pulse = .5 + .5 * Math.sin(now * 8);
     ctx.strokeStyle = 'rgba(224,110,50,' + (.5 + .5 * pulse) + ')'; ctx.lineWidth = 2.5 / scale;
@@ -421,6 +5276,10 @@ function buildLegend() {
       html += `<div class="item" data-ent="${i}"><canvas class="thumb" data-ent="${i}"></canvas><div><div class="name">${e.label}</div><div class="note">${e.note}</div></div></div>`;
     });
   };
+  sec('You', [player], 'WASD · Space');
+  html += `<p>Toggle the hero above, or type <code>setHero('female')</code> / <code>setHero('male')</code> in the console. Creatures you strike fight back. The valley resets every ${DAY / 60} minutes.</p>`;
+  sec('Fights', [], W.duels.length + ' bouts');
+  html += '<p>' + W.duels.map(D => D.a.map(i => byId[i].label.split(' · ').pop()).join(' & ') + ' vs ' + byId[D.b].label).join(' · ') + '</p>';
   sec('Structures', ents.filter(e => e.kind === 'structure'));
   sec('Creatures', ents.filter(e => e.kind === 'monster'), '11 kinds');
   sec('Heroes', ents.filter(e => e.kind === 'hero'));
@@ -430,7 +5289,8 @@ function buildLegend() {
     L.querySelectorAll('.item.on').forEach(o => o.classList.remove('on')); el.classList.add('on');
     if (el.dataset.ent) { const e = ents[+el.dataset.ent];
       focus = e; focusUntil = now + 3.5;
-      flyTo(e.cx(), e.cy(), e.kind === 'structure' || (e.ref.box && e.ref.box[0] > 64) ? 2.5 : 3.5);
+      if (e !== player) setFollow(false);
+      flyTo(e.cx(), e.cy(), e.kind === 'structure' || e.bw > 64 ? 2.5 : 3.5);
     } else { focus = null; flyTo(+el.dataset.fx, +el.dataset.fy, 2.5); }
     if (innerWidth <= 720) { L.classList.add('hidden'); document.getElementById('leg').setAttribute('aria-pressed', false); }
   });
@@ -444,17 +5304,11 @@ function paintThumbs() {
       if (c.dataset.crop) { const [x, y] = c.dataset.crop.split(',').map(Number);
         const im = terrain[0]; if (!im.complete) return im.addEventListener('load', go, { once: true });
         g.drawImage(im, x * T, y * T, T, T, 0, 0, 72, 72); return; }
-      const e = ents[+c.dataset.ent]; let src, sw, sh;
-      if (e.kind === 'monster') { const m = e.ref; const st = m.seq[0][0] === 'gone' ? 'idle' : m.seq[0][0];
-        const fc = m.patrol ? 'down' : m.facing;
-        const sp = W.sprites[m.creature + '/' + st + '/' + fc] || Object.entries(W.sprites).find(([k]) => k.startsWith(m.creature + '/'))[1];
-        src = img(sp.file); sw = sp.w; sh = sp.h;
-      } else if (e.kind === 'structure') { src = img(e.ref.file); sw = e.ref.w; sh = e.ref.h; }
-      else { src = img(e.ref.file); sw = T; sh = T; }
+      const th = ents[+c.dataset.ent].thumb(), src = th.im, sw = th.w, sh = th.h;
       if (!src.complete) return src.addEventListener('load', go, { once: true });
       const k = Math.min(72 / sw, 72 / sh);
       g.imageSmoothingEnabled = k < 1;
-      g.drawImage(src, 0, 0, sw, sh, (72 - sw * k) / 2, (72 - sh * k) / 2, sw * k, sh * k);
+      g.drawImage(src, th.sx, th.sy, sw, sh, (72 - sw * k) / 2, (72 - sh * k) / 2, sw * k, sh * k);
     };
     go();
   });
@@ -472,7 +5326,9 @@ resize(); scale = fitScale(); clampView(); label();
 }
 addEventListener('resize', () => { const c = [(vw / 2 - ox) / scale, (vh / 2 - oy) / scale]; resize();
   ox = vw / 2 - c[0] * scale; oy = vh / 2 - c[1] * scale; clampView(); });
+newDay(true);
 buildLegend();
+console.info("Doodle Codex Valley: WASD to move, Space to strike. setHero('female') or setHero('male') swaps your hero.");
 requestAnimationFrame(draw);
 </script>
 </body>
