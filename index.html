@@ -904,24 +904,16 @@ const W = {
   }
  ],
  "sprites": {
-  "dragon/fly/left": {
-   "file": "sprites/monsters/dragon/fly_left.png",
+  "dragon/idle/left": {
+   "file": "sprites/monsters/dragon/idle_left.png",
    "w": 128,
    "h": 128,
    "ax": 0,
    "ay": 0,
    "loops": true
   },
-  "dragon/fire_breath/left": {
-   "file": "sprites/monsters/dragon/fire_breath_left.png",
-   "w": 256,
-   "h": 128,
-   "ax": 128,
-   "ay": 0,
-   "loops": true
-  },
-  "dragon/idle/left": {
-   "file": "sprites/monsters/dragon/idle_left.png",
+  "dragon/fly/left": {
+   "file": "sprites/monsters/dragon/fly_left.png",
    "w": 128,
    "h": 128,
    "ax": 0,
@@ -936,11 +928,11 @@ const W = {
    "ay": 0,
    "loops": true
   },
-  "ogre/attack/right": {
-   "file": "sprites/monsters/ogre/attack_right.png",
-   "w": 192,
+  "dragon/fire_breath/left": {
+   "file": "sprites/monsters/dragon/fire_breath_left.png",
+   "w": 256,
    "h": 128,
-   "ax": 64,
+   "ax": 128,
    "ay": 0,
    "loops": true
   },
@@ -952,12 +944,12 @@ const W = {
    "ay": 0,
    "loops": true
   },
-  "skeleton/cast/down": {
-   "file": "sprites/monsters/skeleton/cast_down.png",
-   "w": 64,
+  "ogre/attack/right": {
+   "file": "sprites/monsters/ogre/attack_right.png",
+   "w": 192,
    "h": 128,
-   "ax": 0,
-   "ay": 64,
+   "ax": 64,
+   "ay": 0,
    "loops": true
   },
   "skeleton/idle/down": {
@@ -966,6 +958,14 @@ const W = {
    "h": 64,
    "ax": 0,
    "ay": 0,
+   "loops": true
+  },
+  "skeleton/cast/down": {
+   "file": "sprites/monsters/skeleton/cast_down.png",
+   "w": 64,
+   "h": 128,
+   "ax": 0,
+   "ay": 64,
    "loops": true
   },
   "bat/fly/down": {
@@ -1000,6 +1000,14 @@ const W = {
    "ay": 64,
    "loops": true
   },
+  "wraith/idle/right": {
+   "file": "sprites/monsters/wraith/idle_right.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
   "wraith/cast/right": {
    "file": "sprites/monsters/wraith/cast_right.png",
    "w": 64,
@@ -1016,14 +1024,6 @@ const W = {
    "ay": 0,
    "loops": true
   },
-  "wraith/idle/right": {
-   "file": "sprites/monsters/wraith/idle_right.png",
-   "w": 64,
-   "h": 64,
-   "ax": 0,
-   "ay": 0,
-   "loops": true
-  },
   "spider/web/down": {
    "file": "sprites/monsters/spider/web_down.png",
    "w": 128,
@@ -1032,16 +1032,16 @@ const W = {
    "ay": 0,
    "loops": true
   },
-  "spider/attack/down": {
-   "file": "sprites/monsters/spider/attack_down.png",
+  "spider/idle/down": {
+   "file": "sprites/monsters/spider/idle_down.png",
    "w": 64,
    "h": 64,
    "ax": 0,
    "ay": 0,
    "loops": true
   },
-  "spider/idle/down": {
-   "file": "sprites/monsters/spider/idle_down.png",
+  "spider/attack/down": {
+   "file": "sprites/monsters/spider/attack_down.png",
    "w": 64,
    "h": 64,
    "ax": 0,
@@ -1080,16 +1080,16 @@ const W = {
    "ay": 0,
    "loops": true
   },
-  "goblin/attack/right": {
-   "file": "sprites/monsters/goblin/attack_right.png",
+  "goblin/poof/right": {
+   "file": "sprites/monsters/goblin/poof_right.png",
    "w": 128,
    "h": 64,
-   "ax": 0,
+   "ax": 64,
    "ay": 0,
-   "loops": true
+   "loops": false
   },
-  "goblin/idle/right": {
-   "file": "sprites/monsters/goblin/idle_right.png",
+  "goblin/hurt/right": {
+   "file": "sprites/monsters/goblin/hurt_right.png",
    "w": 64,
    "h": 64,
    "ax": 0,
@@ -1104,17 +1104,17 @@ const W = {
    "ay": 0,
    "loops": false
   },
-  "goblin/poof/right": {
-   "file": "sprites/monsters/goblin/poof_right.png",
-   "w": 128,
-   "h": 64,
-   "ax": 64,
-   "ay": 0,
-   "loops": false
-  },
-  "goblin/hurt/right": {
-   "file": "sprites/monsters/goblin/hurt_right.png",
+  "goblin/idle/right": {
+   "file": "sprites/monsters/goblin/idle_right.png",
    "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "goblin/attack/right": {
+   "file": "sprites/monsters/goblin/attack_right.png",
+   "w": 128,
    "h": 64,
    "ax": 0,
    "ay": 0,
@@ -1184,14 +1184,6 @@ const W = {
    "ay": 0,
    "loops": true
   },
-  "slime/attack/left": {
-   "file": "sprites/monsters/slime/attack_left.png",
-   "w": 64,
-   "h": 64,
-   "ax": 0,
-   "ay": 0,
-   "loops": true
-  },
   "slime/split/left": {
    "file": "sprites/monsters/slime/split_left.png",
    "w": 128,
@@ -1202,6 +1194,14 @@ const W = {
   },
   "slime/idle/left": {
    "file": "sprites/monsters/slime/idle_left.png",
+   "w": 64,
+   "h": 64,
+   "ax": 0,
+   "ay": 0,
+   "loops": true
+  },
+  "slime/attack/left": {
+   "file": "sprites/monsters/slime/attack_left.png",
    "w": 64,
    "h": 64,
    "ax": 0,
