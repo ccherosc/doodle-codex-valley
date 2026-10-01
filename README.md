@@ -5,7 +5,10 @@ A living, zoomable sample world built from the Krita Tile Factory tileset (64px,
 The valley moves:
 - NPCs walk short errands in all four facings.
 - Monsters patrol and roam.
-- Nine scripted bouts play out: heroes against monsters, and monsters against each other. Each bout runs through attack, hurt, die and the poof that clears the body.
+- Scripted bouts play out: heroes against monsters, and monsters against each other. Some can go either way.
+- Fighters use their gear. Swords and axes strike in melee. Rangers loose arrows, and mages cast firebolts and arcane bolts that fly across the map and spark on impact.
+- A slain creature dies and vanishes in a puff of smoke. It leaves treasure behind: gold every time, a gem (ruby, emerald or sapphire) more often than not, and now and then a dropped sword or axe. Walk over treasure to pick it up; your purse is in the hint bar.
+- People do not poof. A fallen hero or NPC lies dead where they fell until the morning.
 
 Fallen creatures walk back in after a few seconds. The whole valley resets to its morning every 6 minutes.
 

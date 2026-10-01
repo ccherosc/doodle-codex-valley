@@ -116,7 +116,7 @@ body.noui .showui { display: block; }
 <aside id="legend"></aside>
 <div id="tip"></div>
 <button id="showui" class="showui" title="Show controls (Tab)" aria-label="Show controls">☰</button>
-<div class="hint"><b>WASD</b> move · <b>Space</b> strike · drag to pan · wheel to zoom · <span id="reset"></span></div>
+<div class="hint"><b>WASD</b> move · <b>Space</b> strike · walk over loot to pick it up · <span id="purse">0 gold · 0 gems · 0 weapons</span> · <span id="reset"></span></div>
 <div id="toast"></div>
 
 <script>
@@ -1038,7 +1038,9 @@ const W = {
    "note": "Hero in plate, holding the west road",
    "path": null,
    "sheet": "people/hero_plate.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "ranger",
@@ -1050,7 +1052,9 @@ const W = {
    "note": "Ranger tracking the wolf",
    "path": null,
    "sheet": "people/hero2_ranger.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "shoot",
+   "projectile": "arrow"
   },
   {
    "id": "dragonslayer",
@@ -1062,7 +1066,9 @@ const W = {
    "note": "Hero in dragon armour facing the dragon",
    "path": null,
    "sheet": "people/hero_dragon.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "paladin_dragon",
@@ -1074,7 +1080,9 @@ const W = {
    "note": "Paladin backing up the dragon hunt",
    "path": null,
    "sheet": "people/hero2_light.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "dark_knight",
@@ -1086,7 +1094,9 @@ const W = {
    "note": "Dark knight at the barrow",
    "path": null,
    "sheet": "people/hero_dark.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "battlemage",
@@ -1115,7 +1125,9 @@ const W = {
     ]
    ],
    "sheet": "people/hero2_battlemage.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "cast",
+   "projectile": "bolt"
   },
   {
    "id": "guard",
@@ -1136,7 +1148,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_burly_guard.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "watch",
@@ -1165,7 +1179,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_athletic_watchman.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "queen",
@@ -1177,7 +1193,9 @@ const W = {
    "note": "The queen at the gate",
    "path": null,
    "sheet": "people/f_slender_queen.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "noble",
@@ -1198,7 +1216,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_elder_noble.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "tower_watch",
@@ -1223,7 +1243,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_stocky_watchman.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "innkeeper",
@@ -1235,7 +1257,9 @@ const W = {
    "note": "Innkeeper",
    "path": null,
    "sheet": "people/m_portly_innkeeper.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "barmaid",
@@ -1260,7 +1284,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_curvy_barmaid.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "bard",
@@ -1285,7 +1311,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_lanky_bard.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "merchant",
@@ -1297,7 +1325,9 @@ const W = {
    "note": "Merchant",
    "path": null,
    "sheet": "people/m_stocky_merchant.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "bolt"
   },
   {
    "id": "farmer_market",
@@ -1309,7 +1339,9 @@ const W = {
    "note": "Farmer selling at market",
    "path": null,
    "sheet": "people/f_stout_farmer.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "browser",
@@ -1330,7 +1362,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_lanky_villager.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "sage",
@@ -1342,7 +1376,9 @@ const W = {
    "note": "Village sage",
    "path": null,
    "sheet": "people/f_elder_sage.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "old_farmer",
@@ -1367,7 +1403,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_elder_farmer.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "smith",
@@ -1379,7 +1417,9 @@ const W = {
    "note": "Blacksmith",
    "path": null,
    "sheet": "people/m_burly_smith.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "villager",
@@ -1408,7 +1448,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_slender_villager.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "hunter",
@@ -1433,7 +1475,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_athletic_hunter.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "shoot",
+   "projectile": "arrow"
   },
   {
    "id": "priest",
@@ -1454,7 +1498,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_portly_priest.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "bolt"
   },
   {
    "id": "cultist",
@@ -1466,7 +1512,9 @@ const W = {
    "note": "Cultist at the barrow",
    "path": null,
    "sheet": "people/m_lanky_cultist.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "firebolt"
   },
   {
    "id": "wizard",
@@ -1491,7 +1539,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_curvy_wizard.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "firebolt"
   },
   {
    "id": "monk",
@@ -1516,7 +1566,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_elder_monk.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "bolt"
   },
   {
    "id": "angler",
@@ -1528,7 +1580,9 @@ const W = {
    "note": "Angler on the beach",
    "path": null,
    "sheet": "people/m_stocky_hunter.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "shoot",
+   "projectile": "arrow"
   },
   {
    "id": "bog_hero",
@@ -1540,7 +1594,9 @@ const W = {
    "note": "Hero wading into the bog",
    "path": null,
    "sheet": "people/hero_ranger.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "shoot",
+   "projectile": "arrow"
   },
   {
    "id": "bog_witch",
@@ -1561,7 +1617,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_elder_cultist.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "firebolt"
   },
   {
    "id": "south_farmer",
@@ -1586,7 +1644,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_burly_farmer.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "ice_mage",
@@ -1611,7 +1671,9 @@ const W = {
     ]
    ],
    "sheet": "people/hero2_battlemage.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "cast",
+   "projectile": "bolt"
   },
   {
    "id": "paladin_ice",
@@ -1623,7 +1685,9 @@ const W = {
    "note": "Paladin hunting the ice wolf",
    "path": null,
    "sheet": "people/hero_light.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "hermit",
@@ -1635,7 +1699,9 @@ const W = {
    "note": "Hermit of the peaks",
    "path": null,
    "sheet": "people/m_elder_monk.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "bolt"
   },
   {
    "id": "ferry_inn",
@@ -1647,7 +1713,9 @@ const W = {
    "note": "Ferry innkeeper",
    "path": null,
    "sheet": "people/f_stout_innkeeper.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "pedlar",
@@ -1668,7 +1736,9 @@ const W = {
     ]
    ],
    "sheet": "people/m_lanky_merchant.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "cast",
+   "projectile": "bolt"
   },
   {
    "id": "east_villager",
@@ -1689,7 +1759,9 @@ const W = {
     ]
    ],
    "sheet": "people/f_slender_villager.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "east_smith",
@@ -1701,7 +1773,9 @@ const W = {
    "note": "Eastern smith",
    "path": null,
    "sheet": "people/m_portly_smith.png",
-   "kind": "npc"
+   "kind": "npc",
+   "attack": "attack",
+   "projectile": null
   },
   {
    "id": "south_knight",
@@ -1722,7 +1796,9 @@ const W = {
     ]
    ],
    "sheet": "people/hero2_plate.png",
-   "kind": "hero"
+   "kind": "hero",
+   "attack": "attack",
+   "projectile": null
   }
  ],
  "duels": [
@@ -1797,7 +1873,7 @@ const W = {
     ]
    ],
    "b_at": null,
-   "winner": "a",
+   "winner": "either",
    "every": [
     45,
     65
@@ -1805,11 +1881,16 @@ const W = {
   },
   {
    "a": [
-    "paladin_ice"
+    "paladin_ice",
+    "ice_mage"
    ],
    "b": "wolf_ice",
    "a_at": [
-    null
+    null,
+    [
+     42,
+     13
+    ]
    ],
    "b_at": [
     42,
@@ -1833,7 +1914,7 @@ const W = {
     ]
    ],
    "b_at": null,
-   "winner": "a",
+   "winner": "either",
    "every": [
     45,
     65
@@ -1907,7 +1988,10 @@ const W = {
   "idle",
   "walk",
   "attack",
-  "hurt"
+  "hurt",
+  "die",
+  "shoot",
+  "cast"
  ],
  "sprites": {
   "dragon": {
@@ -4634,6 +4718,108 @@ const W = {
    }
   }
  },
+ "loot": {
+  "gold": {
+   "file": "sprites/loot/gold.png",
+   "w": 64,
+   "h": 64,
+   "kind": "gold"
+  },
+  "gem_ruby": {
+   "file": "sprites/loot/gem_ruby.png",
+   "w": 64,
+   "h": 64,
+   "kind": "gem"
+  },
+  "gem_sapphire": {
+   "file": "sprites/loot/gem_sapphire.png",
+   "w": 64,
+   "h": 64,
+   "kind": "gem"
+  },
+  "gem_emerald": {
+   "file": "sprites/loot/gem_emerald.png",
+   "w": 64,
+   "h": 64,
+   "kind": "gem"
+  },
+  "drop_sword": {
+   "file": "sprites/loot/drop_sword.png",
+   "w": 64,
+   "h": 64,
+   "kind": "weapon"
+  },
+  "drop_axe": {
+   "file": "sprites/loot/drop_axe.png",
+   "w": 64,
+   "h": 64,
+   "kind": "weapon"
+  }
+ },
+ "drops": {
+  "gold": {
+   "chance": 1.0
+  },
+  "gem": {
+   "chance": 0.6,
+   "pick": [
+    "gem_ruby",
+    "gem_sapphire",
+    "gem_emerald"
+   ]
+  },
+  "weapon": {
+   "chance": 0.08,
+   "pick": [
+    "drop_sword",
+    "drop_axe"
+   ]
+  }
+ },
+ "fx": {
+  "arrow": {
+   "files": {
+    "down": "sprites/fx/arrow_down.png",
+    "left": "sprites/fx/arrow_left.png",
+    "right": "sprites/fx/arrow_right.png",
+    "up": "sprites/fx/arrow_up.png"
+   },
+   "speed": 320,
+   "impact": "spark"
+  },
+  "bolt": {
+   "files": {
+    "down": "sprites/fx/bolt_down.png",
+    "left": "sprites/fx/bolt_left.png",
+    "right": "sprites/fx/bolt_right.png",
+    "up": "sprites/fx/bolt_up.png"
+   },
+   "speed": 220,
+   "impact": "spark"
+  },
+  "firebolt": {
+   "files": {
+    "down": "sprites/fx/firebolt_down.png",
+    "left": "sprites/fx/firebolt_left.png",
+    "right": "sprites/fx/firebolt_right.png",
+    "up": "sprites/fx/firebolt_up.png"
+   },
+   "speed": 200,
+   "impact": "spark"
+  },
+  "spark": {
+   "files": {
+    "any": "sprites/fx/spark_any.png"
+   },
+   "speed": null,
+   "impact": null
+  }
+ },
+ "release": {
+  "attack": 2,
+  "shoot": 4,
+  "cast": 3
+ },
  "player": {
   "x": 19,
   "y": 12,
@@ -4667,6 +4853,8 @@ W.structures.forEach(s => img(s.file));
 W.people.forEach(p => img(p.sheet));
 Object.values(W.player.sheets).forEach(img);
 Object.values(SPR).forEach(c => Object.values(c).forEach(s => FACINGS.forEach(fc => s[fc] && img(s[fc].sheet))));
+Object.values(W.loot).forEach(l => img(l.file));
+Object.values(W.fx).forEach(e => Object.values(e.files).forEach(img));
 
 function frameAt(t) { return Math.floor(t * FPS) % FR; }
 function pretty(s) { return s.replace(/^town_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
@@ -4741,7 +4929,7 @@ class Actor {
     const n = Math.floor((now - this.anim.t0) * FPS + 1e-6);
     return this.anim.loop ? n % FR : Math.min(n, FR - 1);
   }
-  impact(st) { return this.kind === 'monster' ? (SPR[this.creature][st].impact ?? 2) : 2; }
+  impact(st) { return this.kind === 'monster' ? (SPR[this.creature][st].impact ?? 2) : (W.release[st] ?? 2); }
   go(x, y) { this.goal = { x, y }; }
   chase(o) { this.goal = { chase: o }; }
   arrived() { return !this.goal; }
@@ -4767,8 +4955,13 @@ class Actor {
   update(dt) {
     if (this.gone) { if (now >= this.respawnAt) this.respawn(); return; }
     if (this.shotDone()) {
-      if (this.anim.st === 'die') this.play('poof');
-      else if (this.anim.st === 'poof') { this.gone = true; this.respawnAt = now + rnd(9, 16); return; }
+      // A creature's death goes up in smoke and leaves treasure; a person's
+      // holds its last frame - they lie where they fell until the new day.
+      if (this.anim.st === 'die') { if (this.kind === 'monster') this.play('poof'); else return; }
+      else if (this.anim.st === 'poof') {
+        this.gone = true; this.respawnAt = now + rnd(9, 16);
+        dropLoot(this.x + this.bw / 2 / T, this.y + this.bh / T); return;
+      }
       else this.play(this.goal ? this.move : this.rest, true);
     }
     if (!this.alive) return;
@@ -4850,6 +5043,7 @@ class Actor {
   thumb() { const s = this.sprite(this.rest, this.home.facing); return { im: s.im, sx: s.sx, sy: s.sy, w: s.w, h: s.h }; }
   status() {
     if (this.gone) return 'respawning…';
+    if (!this.alive && this.kind !== 'monster') return 'lies dead';
     const st = this.anim.st !== this.rest ? this.anim.st : this.owner && this.owner !== AGGRO ? 'squaring up' : 'idle';
     return st.replace('_', ' ') + (this.mortal && this.alive ? ' · ' + '♥'.repeat(Math.max(0, this.hp)) : '');
   }
@@ -4881,7 +5075,9 @@ W.people.forEach(p => {
   const a = new Actor({
     kind: p.kind, label: pretty(p.body) + ' · ' + pretty(p.build), note: p.note, ref: p, id: p.id,
     x: p.x, y: p.y, facing: p.facing, bw: T, bh: T, path: p.path, roams: !!p.path, sheet: p.sheet,
-    rest: 'idle', move: 'walk', speed: 1.1, attacks: ['attack'], mortal: false, maxHp: 99,
+    // Only a duel's killing blow can fell a person; ordinary hits never drain 99.
+    rest: 'idle', move: 'walk', speed: 1.1, attacks: [p.attack || 'attack'], projectile: p.projectile,
+    mortal: true, maxHp: 99,
   });
   actors.push(a); byId[p.id] = a;
 });
@@ -4948,8 +5144,77 @@ function* strike(att, tgt, kill) {
   const move = pickOne(att.attacks), k = att.impact(move);
   att.play(move); att.locked = now + ONE;
   yield k / FPS;
-  if (att.alive) hit(tgt, att, kill);
+  if (!att.alive) return;
+  if (att.projectile && (move === 'shoot' || move === 'cast')) {
+    // The blow lands when the arrow or bolt does, not on the release frame.
+    let landed = false;
+    shoot(att, tgt, () => { landed = true; hit(tgt, att, kill); });
+    yield (FR - k) / FPS;
+    yield () => landed;
+    return;
+  }
+  hit(tgt, att, kill);
   yield (FR - k) / FPS;
+}
+
+// ---------- projectiles, sparks, loot ----------
+const shots = [], sparks = [], drops = [];
+function shoot(att, tgt, onHit) {
+  const [ax, ay] = att.feet, sx = ax * T, sy = ay * T - 22;
+  const e = W.fx[att.projectile];
+  shots.push({ name: att.projectile, x: sx, y: sy, tgt, speed: e.speed || 220, impact: e.impact, onHit,
+               facing: dirTo(tgt.cx() - sx, tgt.cy() - sy), t0: now });
+}
+function stepShots(dt) {
+  for (let i = shots.length - 1; i >= 0; i--) {
+    const s = shots[i], tx = s.tgt.cx(), ty = s.tgt.cy() + 6;
+    const dx = tx - s.x, dy = ty - s.y, d = Math.hypot(dx, dy), step = s.speed * dt;
+    if (d <= Math.max(step, 6) || now - s.t0 > 4) {
+      shots.splice(i, 1);
+      if (s.impact) sparks.push({ name: s.impact, x: tx, y: ty, t0: now });
+      s.onHit(); continue;
+    }
+    s.x += dx / d * step; s.y += dy / d * step; s.facing = dirTo(dx, dy);
+  }
+  for (let i = sparks.length - 1; i >= 0; i--) if (now - sparks[i].t0 >= ONE) sparks.splice(i, 1);
+}
+function fxImg(name, facing) { const f = W.fx[name].files; return img(f[facing] || f.any); }
+function drawShots() {
+  for (const s of shots) ctx.drawImage(fxImg(s.name, s.facing), frameAt(now) * T, 0, T, T, Math.round(s.x) - T / 2, Math.round(s.y) - T / 2, T, T);
+  for (const s of sparks) {   // a spark plays once
+    const f = Math.min(FR - 1, Math.floor((now - s.t0) * FPS));
+    ctx.drawImage(fxImg(s.name, 'any'), f * T, 0, T, T, Math.round(s.x) - T / 2, Math.round(s.y) - T / 2, T, T);
+  }
+}
+// Roll the suggested drop table where the smoke cleared: gold always, a gem
+// often, a weapon rarely. x, y is the bottom-centre of the creature's box, in tiles.
+function dropLoot(x, y) {
+  const got = [];
+  for (const [kind, r] of Object.entries(W.drops)) if (Math.random() < r.chance) got.push(r.pick ? pickOne(r.pick) : kind);
+  got.forEach((name, i) => {
+    const off = (i - (got.length - 1) / 2) * 16;
+    drops.push({ name, x: x * T + off, y: y * T + (i % 2) * 4, t0: now });
+  });
+  return got;
+}
+const purse = { gold: 0, gem: 0, weapon: 0 };
+function stepDrops() {
+  const [px, py] = player.feet;
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    if (now - d.t0 > 120) { drops.splice(i, 1); continue; }
+    if (Math.hypot(d.x - px * T, d.y - 14 - py * T) > 26) continue;
+    drops.splice(i, 1);
+    const kind = W.loot[d.name].kind; purse[kind]++;
+    toast('Picked up ' + (kind === 'gold' ? 'a pile of gold' : pretty(d.name.replace(/^drop_/, ''))));
+    document.getElementById('purse').textContent = purse.gold + ' gold · ' + purse.gem + ' gems · ' + purse.weapon + ' weapons';
+  }
+}
+function drawDrops() {
+  for (const d of drops) {
+    const L = W.loot[d.name];
+    ctx.drawImage(img(L.file), frameAt(now) * L.w, 0, L.w, L.h, Math.round(d.x - L.w / 2), Math.round(d.y - L.h), L.w, L.h);
+  }
 }
 function* duel(D) {
   const A = D.a.map(id => byId[id]), B = byId[D.b], all = A.concat([B]);
@@ -4987,6 +5252,7 @@ let dayStart = 0;
 function newDay(first) {
   dayStart = now;
   actors.forEach(a => a.reset());
+  shots.length = sparks.length = drops.length = 0;
   directors = W.duels.map(D => co(duel(D)));
   if (!first) toast('A new day in the valley');
 }
@@ -5002,6 +5268,7 @@ function simulate() {
   directors.forEach(stepCo);
   actors.forEach(a => a.update(dt));
   updatePlayer(dt);
+  stepShots(dt); stepDrops();
   const left = Math.max(0, DAY - (now - dayStart));
   const el = document.getElementById('reset');
   const txt = 'new day in ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0');
@@ -5200,7 +5467,9 @@ function draw(tn) {
   }
   if (showHex) drawHex();
   const order = ents.slice().sort((a, b) => a.ground() - b.ground());
+  drawDrops();                            // loot lies on the ground, under everyone
   for (const e of order) e.draw();
+  drawShots();                            // projectiles and sparks fly over everything
   if (focus && now < focusUntil) {
     const [x, y, w, h] = focus.bbox(), pulse = .5 + .5 * Math.sin(now * 8);
     ctx.strokeStyle = 'rgba(224,110,50,' + (.5 + .5 * pulse) + ')'; ctx.lineWidth = 2.5 / scale;
